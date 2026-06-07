@@ -1,0 +1,507 @@
+{
+  "image": "supplemental-sheet.png",
+  "columns": 4,
+  "rows": 4,
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "frameRoles": [
+    "neutral_standing_open_eyes",
+    "blink",
+    "look_left_curious",
+    "look_right_curious",
+    "sleepy_half_open",
+    "rubbing_eyes",
+    "yawn",
+    "awake_smile",
+    "fly_right_flap_a",
+    "fly_right_flap_b",
+    "fly_left_flap_a",
+    "fly_left_flap_b",
+    "question_mark_notice",
+    "point_investigate",
+    "working_focus",
+    "happy_wave"
+  ],
+  "frames": [
+    {
+      "index": 0,
+      "row": 0,
+      "column": 0,
+      "sourceCell": [
+        0,
+        0,
+        314,
+        314
+      ],
+      "sourceCrop": [
+        68,
+        51,
+        230,
+        259
+      ],
+      "frame": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "placed": [
+        35,
+        24,
+        185,
+        208
+      ],
+      "role": "neutral_standing_open_eyes"
+    },
+    {
+      "index": 1,
+      "row": 0,
+      "column": 1,
+      "sourceCell": [
+        314,
+        0,
+        313,
+        314
+      ],
+      "sourceCrop": [
+        374,
+        51,
+        231,
+        259
+      ],
+      "frame": [
+        256,
+        0,
+        256,
+        256
+      ],
+      "placed": [
+        291,
+        24,
+        186,
+        208
+      ],
+      "role": "blink"
+    },
+    {
+      "index": 2,
+      "row": 0,
+      "column": 2,
+      "sourceCell": [
+        627,
+        0,
+        313,
+        314
+      ],
+      "sourceCrop": [
+        677,
+        51,
+        225,
+        259
+      ],
+      "frame": [
+        512,
+        0,
+        256,
+        256
+      ],
+      "placed": [
+        549,
+        24,
+        181,
+        208
+      ],
+      "role": "look_left_curious"
+    },
+    {
+      "index": 3,
+      "row": 0,
+      "column": 3,
+      "sourceCell": [
+        940,
+        0,
+        314,
+        314
+      ],
+      "sourceCrop": [
+        955,
+        51,
+        222,
+        259
+      ],
+      "frame": [
+        768,
+        0,
+        256,
+        256
+      ],
+      "placed": [
+        807,
+        24,
+        178,
+        208
+      ],
+      "role": "look_right_curious"
+    },
+    {
+      "index": 4,
+      "row": 1,
+      "column": 0,
+      "sourceCell": [
+        0,
+        314,
+        314,
+        313
+      ],
+      "sourceCrop": [
+        62,
+        349,
+        230,
+        259
+      ],
+      "frame": [
+        0,
+        256,
+        256,
+        256
+      ],
+      "placed": [
+        35,
+        280,
+        185,
+        208
+      ],
+      "role": "sleepy_half_open"
+    },
+    {
+      "index": 5,
+      "row": 1,
+      "column": 1,
+      "sourceCell": [
+        314,
+        314,
+        313,
+        313
+      ],
+      "sourceCrop": [
+        369,
+        350,
+        226,
+        258
+      ],
+      "frame": [
+        256,
+        256,
+        256,
+        256
+      ],
+      "placed": [
+        293,
+        280,
+        182,
+        208
+      ],
+      "role": "rubbing_eyes"
+    },
+    {
+      "index": 6,
+      "row": 1,
+      "column": 2,
+      "sourceCell": [
+        627,
+        314,
+        313,
+        313
+      ],
+      "sourceCrop": [
+        661,
+        349,
+        231,
+        259
+      ],
+      "frame": [
+        512,
+        256,
+        256,
+        256
+      ],
+      "placed": [
+        547,
+        280,
+        186,
+        208
+      ],
+      "role": "yawn"
+    },
+    {
+      "index": 7,
+      "row": 1,
+      "column": 3,
+      "sourceCell": [
+        940,
+        314,
+        314,
+        313
+      ],
+      "sourceCrop": [
+        956,
+        349,
+        232,
+        259
+      ],
+      "frame": [
+        768,
+        256,
+        256,
+        256
+      ],
+      "placed": [
+        803,
+        280,
+        186,
+        208
+      ],
+      "role": "awake_smile"
+    },
+    {
+      "index": 8,
+      "row": 2,
+      "column": 0,
+      "sourceCell": [
+        0,
+        627,
+        314,
+        313
+      ],
+      "sourceCrop": [
+        36,
+        659,
+        260,
+        186
+      ],
+      "frame": [
+        0,
+        512,
+        256,
+        256
+      ],
+      "placed": [
+        24,
+        565,
+        208,
+        149
+      ],
+      "role": "fly_right_flap_a"
+    },
+    {
+      "index": 9,
+      "row": 2,
+      "column": 1,
+      "sourceCell": [
+        314,
+        627,
+        313,
+        313
+      ],
+      "sourceCrop": [
+        345,
+        659,
+        237,
+        189
+      ],
+      "frame": [
+        256,
+        512,
+        256,
+        256
+      ],
+      "placed": [
+        280,
+        557,
+        208,
+        166
+      ],
+      "role": "fly_right_flap_b"
+    },
+    {
+      "index": 10,
+      "row": 2,
+      "column": 2,
+      "sourceCell": [
+        627,
+        627,
+        313,
+        313
+      ],
+      "sourceCrop": [
+        675,
+        659,
+        238,
+        194
+      ],
+      "frame": [
+        512,
+        512,
+        256,
+        256
+      ],
+      "placed": [
+        536,
+        555,
+        208,
+        170
+      ],
+      "role": "fly_left_flap_a"
+    },
+    {
+      "index": 11,
+      "row": 2,
+      "column": 3,
+      "sourceCell": [
+        940,
+        627,
+        314,
+        313
+      ],
+      "sourceCrop": [
+        972,
+        657,
+        259,
+        190
+      ],
+      "frame": [
+        768,
+        512,
+        256,
+        256
+      ],
+      "placed": [
+        792,
+        563,
+        208,
+        153
+      ],
+      "role": "fly_left_flap_b"
+    },
+    {
+      "index": 12,
+      "row": 3,
+      "column": 0,
+      "sourceCell": [
+        0,
+        940,
+        314,
+        314
+      ],
+      "sourceCrop": [
+        0,
+        940,
+        314,
+        314
+      ],
+      "frame": [
+        0,
+        768,
+        256,
+        256
+      ],
+      "placed": [
+        0,
+        768,
+        256,
+        256
+      ],
+      "role": "question_mark_notice"
+    },
+    {
+      "index": 13,
+      "row": 3,
+      "column": 1,
+      "sourceCell": [
+        314,
+        940,
+        313,
+        314
+      ],
+      "sourceCrop": [
+        314,
+        940,
+        313,
+        314
+      ],
+      "frame": [
+        256,
+        768,
+        256,
+        256
+      ],
+      "placed": [
+        256,
+        768,
+        256,
+        256
+      ],
+      "role": "point_investigate"
+    },
+    {
+      "index": 14,
+      "row": 3,
+      "column": 2,
+      "sourceCell": [
+        627,
+        940,
+        313,
+        314
+      ],
+      "sourceCrop": [
+        627,
+        940,
+        313,
+        314
+      ],
+      "frame": [
+        512,
+        768,
+        256,
+        256
+      ],
+      "placed": [
+        512,
+        768,
+        256,
+        256
+      ],
+      "role": "working_focus"
+    },
+    {
+      "index": 15,
+      "row": 3,
+      "column": 3,
+      "sourceCell": [
+        940,
+        940,
+        314,
+        314
+      ],
+      "sourceCrop": [
+        940,
+        940,
+        314,
+        314
+      ],
+      "frame": [
+        768,
+        768,
+        256,
+        256
+      ],
+      "placed": [
+        768,
+        768,
+        256,
+        256
+      ],
+      "role": "happy_wave"
+    }
+  ]
+}

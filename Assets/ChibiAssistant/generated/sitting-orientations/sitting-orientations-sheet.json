@@ -1,0 +1,302 @@
+{
+  "image": "sitting-orientations-sheet.png",
+  "columns": 5,
+  "rows": 2,
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "frameRoles": [
+    "front_neutral",
+    "front_blink",
+    "gaze_up_right",
+    "gaze_up",
+    "gaze_up_left",
+    "gaze_right",
+    "gaze_down_right",
+    "gaze_down",
+    "gaze_down_left",
+    "gaze_left"
+  ],
+  "normalizedTo": {
+    "reference": "legacy primary sitting frame",
+    "targetHeight": 215,
+    "targetBottom": 235,
+    "legacyBbox": [
+      30,
+      20,
+      226,
+      235
+    ],
+    "processing": "green chroma removed, components below 20 pixels dropped, tight crop resized to legacy sitting footprint"
+  },
+  "frames": [
+    {
+      "index": 0,
+      "row": 0,
+      "column": 0,
+      "frame": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "role": "front_neutral",
+      "source": "00-front_neutral.png",
+      "sourceRect": [
+        0,
+        0,
+        397,
+        396
+      ],
+      "scaleApplied": 0.8022,
+      "bbox": [
+        22,
+        20,
+        234,
+        235
+      ]
+    },
+    {
+      "index": 1,
+      "row": 0,
+      "column": 1,
+      "frame": [
+        256,
+        0,
+        256,
+        256
+      ],
+      "role": "front_blink",
+      "source": "01-front_blink.png",
+      "sourceRect": [
+        397,
+        0,
+        793,
+        396
+      ],
+      "scaleApplied": 0.8052,
+      "bbox": [
+        22,
+        20,
+        235,
+        235
+      ]
+    },
+    {
+      "index": 2,
+      "row": 0,
+      "column": 2,
+      "frame": [
+        512,
+        0,
+        256,
+        256
+      ],
+      "role": "gaze_up_right",
+      "source": "02-gaze_up_right.png",
+      "sourceRect": [
+        1586,
+        0,
+        1983,
+        396
+      ],
+      "scaleApplied": 0.8022,
+      "bbox": [
+        26,
+        20,
+        231,
+        235
+      ]
+    },
+    {
+      "index": 3,
+      "row": 0,
+      "column": 3,
+      "frame": [
+        768,
+        0,
+        256,
+        256
+      ],
+      "role": "gaze_up",
+      "source": "03-gaze_up.png",
+      "sourceRect": [
+        1190,
+        0,
+        1586,
+        396
+      ],
+      "scaleApplied": 0.8022,
+      "bbox": [
+        24,
+        20,
+        232,
+        235
+      ]
+    },
+    {
+      "index": 4,
+      "row": 0,
+      "column": 4,
+      "frame": [
+        1024,
+        0,
+        256,
+        256
+      ],
+      "role": "gaze_up_left",
+      "source": "04-gaze_up_left.png",
+      "sourceRect": [
+        793,
+        0,
+        1190,
+        396
+      ],
+      "scaleApplied": 0.8022,
+      "bbox": [
+        26,
+        20,
+        231,
+        235
+      ]
+    },
+    {
+      "index": 5,
+      "row": 1,
+      "column": 0,
+      "frame": [
+        0,
+        256,
+        256,
+        256
+      ],
+      "role": "gaze_right",
+      "source": "05-gaze_right.png",
+      "sourceRect": [
+        0,
+        396,
+        397,
+        793
+      ],
+      "scaleApplied": 0.7993,
+      "bbox": [
+        26,
+        20,
+        229,
+        235
+      ]
+    },
+    {
+      "index": 6,
+      "row": 1,
+      "column": 1,
+      "frame": [
+        256,
+        256,
+        256,
+        256
+      ],
+      "role": "gaze_down_right",
+      "source": "06-gaze_down_right.png",
+      "sourceRect": [
+        397,
+        396,
+        793,
+        793
+      ],
+      "scaleApplied": 0.8175,
+      "bbox": [
+        25,
+        20,
+        231,
+        235
+      ]
+    },
+    {
+      "index": 7,
+      "row": 1,
+      "column": 2,
+      "frame": [
+        512,
+        256,
+        256,
+        256
+      ],
+      "role": "gaze_down",
+      "source": "07-gaze_down.png",
+      "sourceRect": [
+        793,
+        396,
+        1190,
+        793
+      ],
+      "scaleApplied": 0.7963,
+      "bbox": [
+        26,
+        20,
+        231,
+        235
+      ]
+    },
+    {
+      "index": 8,
+      "row": 1,
+      "column": 3,
+      "frame": [
+        768,
+        256,
+        256,
+        256
+      ],
+      "role": "gaze_down_left",
+      "source": "08-gaze_down_left.png",
+      "sourceRect": [
+        1190,
+        396,
+        1586,
+        793
+      ],
+      "scaleApplied": 0.8175,
+      "bbox": [
+        26,
+        20,
+        231,
+        235
+      ]
+    },
+    {
+      "index": 9,
+      "row": 1,
+      "column": 4,
+      "frame": [
+        1024,
+        256,
+        256,
+        256
+      ],
+      "role": "gaze_left",
+      "source": "09-gaze_left.png",
+      "sourceRect": [
+        1586,
+        396,
+        1983,
+        793
+      ],
+      "scaleApplied": 0.8022,
+      "bbox": [
+        26,
+        20,
+        231,
+        235
+      ]
+    }
+  ],
+  "fixes": [
+    {
+      "description": "Swapped gaze_up_right and gaze_up_left cell art so sitting diagonal gaze matches screen direction.",
+      "swappedIndices": [
+        2,
+        4
+      ]
+    }
+  ]
+}

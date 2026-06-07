@@ -1,0 +1,218 @@
+{
+  "image": "standing-orientations-sheet.png",
+  "columns": 5,
+  "rows": 2,
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "frameRoles": [
+    "front_neutral",
+    "front_blink",
+    "gaze_up_right",
+    "gaze_up",
+    "gaze_up_left",
+    "gaze_right",
+    "gaze_down_right",
+    "gaze_down",
+    "gaze_down_left",
+    "gaze_left"
+  ],
+  "normalizedTo": {
+    "reference": "front_neutral",
+    "targetHeight": 202,
+    "targetBottom": 230,
+    "gazeUpSource": "03-gaze_up_candidate.png",
+    "gazeUpProcessing": "largest connected component, tight crop, resized to neutral visible height"
+  },
+  "frames": [
+    {
+      "index": 0,
+      "row": 0,
+      "column": 0,
+      "frame": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "role": "front_neutral",
+      "source": "00-front_neutral.png",
+      "bbox": [
+        42,
+        28,
+        213,
+        230
+      ]
+    },
+    {
+      "index": 1,
+      "row": 0,
+      "column": 1,
+      "frame": [
+        256,
+        0,
+        256,
+        256
+      ],
+      "role": "front_blink",
+      "source": "01-front_blink.png",
+      "bbox": [
+        44,
+        28,
+        211,
+        230
+      ]
+    },
+    {
+      "index": 2,
+      "row": 0,
+      "column": 2,
+      "frame": [
+        512,
+        0,
+        256,
+        256
+      ],
+      "role": "gaze_up_right",
+      "source": "02-gaze_up_right.png",
+      "bbox": [
+        44,
+        30,
+        211,
+        230
+      ]
+    },
+    {
+      "index": 3,
+      "row": 0,
+      "column": 3,
+      "frame": [
+        768,
+        0,
+        256,
+        256
+      ],
+      "role": "gaze_up",
+      "source": "03-gaze_up.png",
+      "bbox": [
+        48,
+        28,
+        209,
+        230
+      ]
+    },
+    {
+      "index": 4,
+      "row": 0,
+      "column": 4,
+      "frame": [
+        1024,
+        0,
+        256,
+        256
+      ],
+      "role": "gaze_up_left",
+      "source": "04-gaze_up_left.png",
+      "bbox": [
+        48,
+        30,
+        209,
+        230
+      ]
+    },
+    {
+      "index": 5,
+      "row": 1,
+      "column": 0,
+      "frame": [
+        0,
+        256,
+        256,
+        256
+      ],
+      "role": "gaze_right",
+      "source": "05-gaze_right.png",
+      "bbox": [
+        64,
+        30,
+        193,
+        230
+      ]
+    },
+    {
+      "index": 6,
+      "row": 1,
+      "column": 1,
+      "frame": [
+        256,
+        256,
+        256,
+        256
+      ],
+      "role": "gaze_down_right",
+      "source": "06-gaze_down_right.png",
+      "bbox": [
+        56,
+        30,
+        199,
+        230
+      ]
+    },
+    {
+      "index": 7,
+      "row": 1,
+      "column": 2,
+      "frame": [
+        512,
+        256,
+        256,
+        256
+      ],
+      "role": "gaze_down",
+      "source": "07-gaze_down.png",
+      "bbox": [
+        48,
+        28,
+        209,
+        230
+      ]
+    },
+    {
+      "index": 8,
+      "row": 1,
+      "column": 3,
+      "frame": [
+        768,
+        256,
+        256,
+        256
+      ],
+      "role": "gaze_down_left",
+      "source": "08-gaze_down_left.png",
+      "bbox": [
+        51,
+        30,
+        205,
+        230
+      ]
+    },
+    {
+      "index": 9,
+      "row": 1,
+      "column": 4,
+      "frame": [
+        1024,
+        256,
+        256,
+        256
+      ],
+      "role": "gaze_left",
+      "source": "09-gaze_left.png",
+      "bbox": [
+        64,
+        30,
+        191,
+        230
+      ]
+    }
+  ]
+}

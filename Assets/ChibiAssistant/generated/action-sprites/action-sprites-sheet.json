@@ -1,0 +1,95 @@
+{
+  "image": "action-sprites-sheet.png",
+  "columns": 6,
+  "rows": 1,
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "frameRoles": [
+    "fly_left_a",
+    "fly_left_b",
+    "fly_right_a",
+    "fly_right_b",
+    "thinking_active_thread",
+    "happy_wave"
+  ],
+  "frames": [
+    {
+      "index": 0,
+      "row": 0,
+      "column": 0,
+      "source": "00-fly_left_a.png",
+      "role": "fly_left_a",
+      "frame": [
+        0,
+        0,
+        256,
+        256
+      ]
+    },
+    {
+      "index": 1,
+      "row": 0,
+      "column": 1,
+      "source": "01-fly_left_b.png",
+      "role": "fly_left_b",
+      "frame": [
+        256,
+        0,
+        256,
+        256
+      ]
+    },
+    {
+      "index": 2,
+      "row": 0,
+      "column": 2,
+      "source": "02-fly_right_a.png",
+      "role": "fly_right_a",
+      "frame": [
+        512,
+        0,
+        256,
+        256
+      ]
+    },
+    {
+      "index": 3,
+      "row": 0,
+      "column": 3,
+      "source": "03-fly_right_b.png",
+      "role": "fly_right_b",
+      "frame": [
+        768,
+        0,
+        256,
+        256
+      ]
+    },
+    {
+      "index": 4,
+      "row": 0,
+      "column": 4,
+      "source": "04-thinking.png",
+      "role": "thinking_active_thread",
+      "frame": [
+        1024,
+        0,
+        256,
+        256
+      ]
+    },
+    {
+      "index": 5,
+      "row": 0,
+      "column": 5,
+      "source": "05-happy_wave.png",
+      "role": "happy_wave",
+      "frame": [
+        1280,
+        0,
+        256,
+        256
+      ]
+    }
+  ]
+}

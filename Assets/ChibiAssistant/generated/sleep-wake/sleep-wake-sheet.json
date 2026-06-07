@@ -1,0 +1,209 @@
+{
+  "image": "sleep-wake-sheet.png",
+  "columns": 6,
+  "rows": 1,
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "frameRoles": [
+    "sleep_deep",
+    "sleep_shift",
+    "wake_sleepy_sit",
+    "wake_rub_eyes",
+    "wake_hello_sit",
+    "wake_standing_ready"
+  ],
+  "normalizedTo": {
+    "targetMaxHeight": 215,
+    "targetMaxWidth": 225,
+    "targetBottom": 235,
+    "standingFrontBbox": [
+      42,
+      28,
+      213,
+      230
+    ],
+    "legacySittingBbox": [
+      30,
+      20,
+      226,
+      235
+    ],
+    "processing": "green chroma removed, small detached components dropped, tight crop fitted within target max width and height"
+  },
+  "usage": {
+    "wakeOrder": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "sleepOrder": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ]
+  },
+  "frames": [
+    {
+      "index": 0,
+      "row": 0,
+      "column": 0,
+      "frame": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "role": "sleep_deep",
+      "source": "00-sleep_deep.png",
+      "sourceRect": [
+        0,
+        0,
+        362,
+        724
+      ],
+      "scaleApplied": 0.7895,
+      "bbox": [
+        16,
+        67,
+        241,
+        235
+      ]
+    },
+    {
+      "index": 1,
+      "row": 0,
+      "column": 1,
+      "frame": [
+        256,
+        0,
+        256,
+        256
+      ],
+      "role": "sleep_shift",
+      "source": "01-sleep_shift.png",
+      "sourceRect": [
+        362,
+        0,
+        724,
+        724
+      ],
+      "scaleApplied": 0.784,
+      "bbox": [
+        16,
+        68,
+        241,
+        235
+      ]
+    },
+    {
+      "index": 2,
+      "row": 0,
+      "column": 2,
+      "frame": [
+        512,
+        0,
+        256,
+        256
+      ],
+      "role": "wake_sleepy_sit",
+      "source": "02-wake_sleepy_sit.png",
+      "sourceRect": [
+        724,
+        0,
+        1086,
+        724
+      ],
+      "scaleApplied": 0.7363,
+      "bbox": [
+        22,
+        20,
+        233,
+        235
+      ]
+    },
+    {
+      "index": 3,
+      "row": 0,
+      "column": 3,
+      "frame": [
+        768,
+        0,
+        256,
+        256
+      ],
+      "role": "wake_rub_eyes",
+      "source": "03-wake_rub_eyes.png",
+      "sourceRect": [
+        1086,
+        0,
+        1448,
+        724
+      ],
+      "scaleApplied": 0.7363,
+      "bbox": [
+        22,
+        20,
+        234,
+        235
+      ]
+    },
+    {
+      "index": 4,
+      "row": 0,
+      "column": 4,
+      "frame": [
+        1024,
+        0,
+        256,
+        256
+      ],
+      "role": "wake_hello_sit",
+      "source": "04-wake_hello_sit.png",
+      "sourceRect": [
+        1448,
+        0,
+        1810,
+        724
+      ],
+      "scaleApplied": 0.7363,
+      "bbox": [
+        22,
+        20,
+        233,
+        235
+      ]
+    },
+    {
+      "index": 5,
+      "row": 0,
+      "column": 5,
+      "frame": [
+        1280,
+        0,
+        256,
+        256
+      ],
+      "role": "wake_standing_ready",
+      "source": "05-wake_standing_ready.png",
+      "sourceRect": [
+        1810,
+        0,
+        2172,
+        724
+      ],
+      "scaleApplied": 0.6891,
+      "bbox": [
+        35,
+        20,
+        221,
+        235
+      ]
+    }
+  ]
+}

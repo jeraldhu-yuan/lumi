@@ -1,0 +1,735 @@
+{
+  "image": "extra-sheet.png",
+  "columns": 4,
+  "rows": 6,
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "frameRoles": [
+    "sitting_blink_model",
+    "notice_proximity",
+    "listening_prompt",
+    "reading_input",
+    "thinking",
+    "notice_transition",
+    "listening_transition",
+    "reading_transition",
+    "working_transition",
+    "listening_prompt_right_no_accessory",
+    "reading_input_right_no_accessory",
+    "thinking_right_no_accessory",
+    "notice_transition_right_no_accessory",
+    "listening_transition_right_no_accessory",
+    "reading_transition_right_no_accessory",
+    "working_transition_right_no_accessory",
+    "gaze_up",
+    "gaze_up_right_no_accessory",
+    "gaze_right_no_accessory",
+    "gaze_down_right_no_accessory",
+    "gaze_down",
+    "gaze_down_left",
+    "gaze_left",
+    "gaze_up_left"
+  ],
+  "frames": [
+    {
+      "index": 0,
+      "row": 0,
+      "column": 0,
+      "frame": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "role": "sitting_blink_model",
+      "source": "sitting-blink-transparent.png",
+      "fit": {
+        "referenceBBox": [
+          30,
+          20,
+          226,
+          235
+        ],
+        "generatedBBox": [
+          198,
+          128,
+          1060,
+          1055
+        ],
+        "placed": [
+          32,
+          28,
+          192,
+          207
+        ]
+      }
+    },
+    {
+      "index": 1,
+      "row": 0,
+      "column": 1,
+      "frame": [
+        256,
+        0,
+        256,
+        256
+      ],
+      "role": "notice_proximity",
+      "source": "behavior-sheet-transparent.png",
+      "sourceQuadrant": [
+        0,
+        0
+      ],
+      "sourceCrop": [
+        98,
+        64,
+        538,
+        586
+      ],
+      "placed": [
+        38,
+        22,
+        180,
+        214
+      ]
+    },
+    {
+      "index": 2,
+      "row": 0,
+      "column": 2,
+      "frame": [
+        512,
+        0,
+        256,
+        256
+      ],
+      "role": "listening_prompt",
+      "source": "behavior-sheet-transparent.png",
+      "sourceQuadrant": [
+        1,
+        0
+      ],
+      "sourceCrop": [
+        63,
+        70,
+        489,
+        580
+      ],
+      "placed": [
+        39,
+        22,
+        178,
+        214
+      ]
+    },
+    {
+      "index": 3,
+      "row": 0,
+      "column": 3,
+      "frame": [
+        768,
+        0,
+        256,
+        256
+      ],
+      "role": "reading_input",
+      "source": "behavior-sheet-transparent.png",
+      "sourceQuadrant": [
+        0,
+        1
+      ],
+      "sourceCrop": [
+        131,
+        14,
+        535,
+        509
+      ],
+      "placed": [
+        41,
+        22,
+        174,
+        214
+      ]
+    },
+    {
+      "index": 4,
+      "row": 1,
+      "column": 0,
+      "frame": [
+        0,
+        256,
+        256,
+        256
+      ],
+      "role": "thinking",
+      "source": "behavior-sheet-transparent.png",
+      "sourceQuadrant": [
+        1,
+        1
+      ],
+      "sourceCrop": [
+        74,
+        14,
+        489,
+        501
+      ],
+      "placed": [
+        37,
+        22,
+        182,
+        214
+      ]
+    },
+    {
+      "index": 5,
+      "row": 1,
+      "column": 1,
+      "frame": [
+        256,
+        256,
+        256,
+        256
+      ],
+      "role": "notice_transition",
+      "source": "transition-sheet-transparent.png",
+      "sourceQuadrant": [
+        0,
+        0
+      ],
+      "sourceCrop": [
+        91,
+        88,
+        554,
+        559
+      ],
+      "placed": [
+        34,
+        33,
+        188,
+        191
+      ]
+    },
+    {
+      "index": 6,
+      "row": 1,
+      "column": 2,
+      "frame": [
+        512,
+        256,
+        256,
+        256
+      ],
+      "role": "listening_transition",
+      "source": "transition-sheet-transparent.png",
+      "sourceQuadrant": [
+        1,
+        0
+      ],
+      "sourceCrop": [
+        31,
+        82,
+        475,
+        558
+      ],
+      "placed": [
+        34,
+        28,
+        188,
+        202
+      ]
+    },
+    {
+      "index": 7,
+      "row": 1,
+      "column": 3,
+      "frame": [
+        768,
+        256,
+        256,
+        256
+      ],
+      "role": "reading_transition",
+      "source": "transition-sheet-transparent.png",
+      "sourceQuadrant": [
+        0,
+        1
+      ],
+      "sourceCrop": [
+        116,
+        43,
+        554,
+        519
+      ],
+      "placed": [
+        34,
+        27,
+        188,
+        204
+      ]
+    },
+    {
+      "index": 8,
+      "row": 2,
+      "column": 0,
+      "frame": [
+        0,
+        512,
+        256,
+        256
+      ],
+      "role": "working_transition",
+      "source": "transition-sheet-transparent.png",
+      "sourceQuadrant": [
+        1,
+        1
+      ],
+      "sourceCrop": [
+        10,
+        28,
+        491,
+        519
+      ],
+      "placed": [
+        34,
+        33,
+        188,
+        192
+      ]
+    },
+    {
+      "index": 9,
+      "row": 2,
+      "column": 1,
+      "frame": [
+        256,
+        512,
+        256,
+        256
+      ],
+      "role": "listening_prompt_right_no_accessory",
+      "source": "right-no-accessory-sheet-transparent.png",
+      "sourceQuadrant": [
+        1,
+        0
+      ],
+      "sourceCrop": [
+        25,
+        59,
+        440,
+        535
+      ],
+      "placed": [
+        34,
+        22,
+        187,
+        214
+      ]
+    },
+    {
+      "index": 10,
+      "row": 2,
+      "column": 2,
+      "frame": [
+        512,
+        512,
+        256,
+        256
+      ],
+      "role": "reading_input_right_no_accessory",
+      "source": "right-no-accessory-sheet-transparent.png",
+      "sourceQuadrant": [
+        0,
+        1
+      ],
+      "sourceCrop": [
+        140,
+        0,
+        502,
+        469
+      ],
+      "placed": [
+        45,
+        22,
+        165,
+        214
+      ]
+    },
+    {
+      "index": 11,
+      "row": 2,
+      "column": 3,
+      "frame": [
+        768,
+        512,
+        256,
+        256
+      ],
+      "role": "thinking_right_no_accessory",
+      "source": "right-no-accessory-sheet-transparent.png",
+      "sourceQuadrant": [
+        1,
+        1
+      ],
+      "sourceCrop": [
+        0,
+        0,
+        500,
+        486
+      ],
+      "placed": [
+        34,
+        37,
+        188,
+        183
+      ]
+    },
+    {
+      "index": 12,
+      "row": 3,
+      "column": 0,
+      "frame": [
+        0,
+        768,
+        256,
+        256
+      ],
+      "role": "notice_transition_right_no_accessory",
+      "source": "right-no-accessory-sheet-transparent.png",
+      "sourceQuadrant": [
+        0,
+        0
+      ],
+      "sourceCrop": [
+        138,
+        58,
+        527,
+        540
+      ],
+      "placed": [
+        41,
+        22,
+        173,
+        214
+      ]
+    },
+    {
+      "index": 13,
+      "row": 3,
+      "column": 1,
+      "frame": [
+        256,
+        768,
+        256,
+        256
+      ],
+      "role": "listening_transition_right_no_accessory",
+      "source": "right-no-accessory-sheet-transparent.png",
+      "sourceQuadrant": [
+        1,
+        0
+      ],
+      "sourceCrop": [
+        25,
+        59,
+        440,
+        535
+      ],
+      "placed": [
+        34,
+        22,
+        187,
+        214
+      ]
+    },
+    {
+      "index": 14,
+      "row": 3,
+      "column": 2,
+      "frame": [
+        512,
+        768,
+        256,
+        256
+      ],
+      "role": "reading_transition_right_no_accessory",
+      "source": "right-no-accessory-sheet-transparent.png",
+      "sourceQuadrant": [
+        0,
+        1
+      ],
+      "sourceCrop": [
+        140,
+        0,
+        502,
+        469
+      ],
+      "placed": [
+        45,
+        22,
+        165,
+        214
+      ]
+    },
+    {
+      "index": 15,
+      "row": 3,
+      "column": 3,
+      "frame": [
+        768,
+        768,
+        256,
+        256
+      ],
+      "role": "working_transition_right_no_accessory",
+      "source": "right-no-accessory-sheet-transparent.png",
+      "sourceQuadrant": [
+        1,
+        1
+      ],
+      "sourceCrop": [
+        0,
+        0,
+        500,
+        486
+      ],
+      "placed": [
+        34,
+        37,
+        188,
+        183
+      ]
+    },
+    {
+      "index": 16,
+      "row": 4,
+      "column": 0,
+      "frame": [
+        0,
+        1024,
+        256,
+        256
+      ],
+      "role": "gaze_up",
+      "source": "gaze-8dir-sheet-transparent.png",
+      "sourceQuadrant": [
+        0,
+        0
+      ],
+      "sourceCrop": [
+        86,
+        58,
+        397,
+        403
+      ],
+      "placed": [
+        34,
+        24,
+        188,
+        209
+      ]
+    },
+    {
+      "index": 17,
+      "row": 4,
+      "column": 1,
+      "frame": [
+        256,
+        1024,
+        256,
+        256
+      ],
+      "role": "gaze_up_right_no_accessory",
+      "source": "gaze-8dir-sheet-transparent.png",
+      "sourceQuadrant": [
+        1,
+        0
+      ],
+      "sourceCrop": [
+        82,
+        68,
+        408,
+        408
+      ],
+      "placed": [
+        34,
+        31,
+        188,
+        196
+      ]
+    },
+    {
+      "index": 18,
+      "row": 4,
+      "column": 2,
+      "frame": [
+        512,
+        1024,
+        256,
+        256
+      ],
+      "role": "gaze_right_no_accessory",
+      "source": "gaze-8dir-sheet-transparent.png",
+      "sourceQuadrant": [
+        2,
+        0
+      ],
+      "sourceCrop": [
+        64,
+        64,
+        386,
+        403
+      ],
+      "placed": [
+        34,
+        30,
+        188,
+        198
+      ]
+    },
+    {
+      "index": 19,
+      "row": 4,
+      "column": 3,
+      "frame": [
+        768,
+        1024,
+        256,
+        256
+      ],
+      "role": "gaze_down_right_no_accessory",
+      "source": "gaze-8dir-sheet-transparent.png",
+      "sourceQuadrant": [
+        3,
+        0
+      ],
+      "sourceCrop": [
+        32,
+        78,
+        363,
+        408
+      ],
+      "placed": [
+        34,
+        35,
+        188,
+        187
+      ]
+    },
+    {
+      "index": 20,
+      "row": 5,
+      "column": 0,
+      "frame": [
+        0,
+        1280,
+        256,
+        256
+      ],
+      "role": "gaze_down",
+      "source": "gaze-8dir-sheet-transparent.png",
+      "sourceQuadrant": [
+        0,
+        1
+      ],
+      "sourceCrop": [
+        85,
+        0,
+        397,
+        350
+      ],
+      "placed": [
+        34,
+        23,
+        188,
+        211
+      ]
+    },
+    {
+      "index": 21,
+      "row": 5,
+      "column": 1,
+      "frame": [
+        256,
+        1280,
+        256,
+        256
+      ],
+      "role": "gaze_down_left",
+      "source": "gaze-8dir-sheet-transparent.png",
+      "sourceQuadrant": [
+        1,
+        1
+      ],
+      "sourceCrop": [
+        63,
+        20,
+        383,
+        350
+      ],
+      "placed": [
+        34,
+        32,
+        188,
+        194
+      ]
+    },
+    {
+      "index": 22,
+      "row": 5,
+      "column": 2,
+      "frame": [
+        512,
+        1280,
+        256,
+        256
+      ],
+      "role": "gaze_left",
+      "source": "gaze-8dir-sheet-transparent.png",
+      "sourceQuadrant": [
+        2,
+        1
+      ],
+      "sourceCrop": [
+        101,
+        6,
+        366,
+        350
+      ],
+      "placed": [
+        45,
+        22,
+        165,
+        214
+      ]
+    },
+    {
+      "index": 23,
+      "row": 5,
+      "column": 3,
+      "frame": [
+        768,
+        1280,
+        256,
+        256
+      ],
+      "role": "gaze_up_left",
+      "source": "gaze-8dir-sheet-transparent.png",
+      "sourceQuadrant": [
+        3,
+        1
+      ],
+      "sourceCrop": [
+        45,
+        12,
+        344,
+        350
+      ],
+      "placed": [
+        34,
+        22,
+        188,
+        213
+      ]
+    }
+  ]
+}

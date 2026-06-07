@@ -4,7 +4,7 @@ A tiny macOS companion that keeps a cute floating Codex sprite on your desktop. 
 
 This is an MVP. It uses the experimental `codex app-server` protocol exposed by the Codex desktop app CLI, so the adapter is intentionally isolated and easy to replace if the protocol changes.
 
-![Codex Desktop Sprite demo](docs/media/sprite-demo.gif)
+![Codex Desktop Sprite demo](docs/media/sprite-demo.mov)
 
 ## What Works
 

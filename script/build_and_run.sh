@@ -2,8 +2,8 @@
 set -euo pipefail
 
 MODE="${1:-run}"
-APP_NAME="Sprite"
-BUNDLE_ID="com.github.jj9276489.desktopsprite"
+APP_NAME="Lumi"
+BUNDLE_ID="com.github.jj9276489.lumi"
 MIN_SYSTEM_VERSION="14.0"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -18,7 +18,7 @@ INFO_PLIST="$APP_CONTENTS/Info.plist"
 cd "$ROOT_DIR"
 
 pkill -x "$APP_NAME" >/dev/null 2>&1 || true
-pkill -x "CodexSprite" >/dev/null 2>&1 || true
+pkill -x "CodexSprite" >/dev/null 2>&1 || true; pkill -x "Sprite" >/dev/null 2>&1 || true
 
 mkdir -p "$ROOT_DIR/.build"
 SWIFTPM_LOG="$ROOT_DIR/.build/swiftpm-build.log"
@@ -34,7 +34,7 @@ else
     -parse-as-library \
     -target arm64-apple-macosx14.0 \
     -framework AppKit \
-    "$ROOT_DIR"/Sources/CodexSprite/*.swift \
+    "$ROOT_DIR"/Sources/Lumi/*.swift \
     -o "$FALLBACK_DIR/$APP_NAME"
   BUILD_BINARY="$FALLBACK_DIR/$APP_NAME"
 fi
@@ -76,6 +76,10 @@ cat >"$INFO_PLIST" <<PLIST
   <string>$APP_NAME</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>0.3.0</string>
+  <key>CFBundleVersion</key>
+  <string>3</string>
   <key>LSMinimumSystemVersion</key>
   <string>$MIN_SYSTEM_VERSION</string>
   <key>LSUIElement</key>
@@ -94,6 +98,9 @@ case "$MODE" in
   run)
     open_app
     ;;
+  --build|build)
+    echo "Built $APP_BUNDLE"
+    ;;
   --debug|debug)
     lldb -- "$APP_BINARY"
     ;;
@@ -111,7 +118,7 @@ case "$MODE" in
     pgrep -x "$APP_NAME" >/dev/null
     ;;
   *)
-    echo "usage: $0 [run|--debug|--logs|--telemetry|--verify]" >&2
+    echo "usage: $0 [run|--build|--debug|--logs|--telemetry|--verify]" >&2
     exit 2
     ;;
 esac

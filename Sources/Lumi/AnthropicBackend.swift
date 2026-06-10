@@ -44,6 +44,7 @@ final class AnthropicBackend: AgentBackend {
 
         var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
         request.httpMethod = "POST"
+        request.timeoutInterval = 300
         request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -70,38 +71,28 @@ final class AnthropicBackend: AgentBackend {
                     for try await line in bytes.lines {
                         errorBody += line
                     }
-                    let message = Self.apiErrorMessage(from: errorBody) ?? "Anthropic API returned HTTP \(http.statusCode)."
+                    let message = AnthropicSSEParser.errorMessage(fromBody: errorBody)
+                        ?? "Anthropic API returned HTTP \(http.statusCode)."
                     onEvent(.failed(message))
                     return
                 }
 
                 for try await line in bytes.lines {
-                    guard line.hasPrefix("data: "),
-                          let data = line.dropFirst(6).data(using: .utf8),
-                          let event = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
-                          let type = event["type"] as? String else { continue }
+                    guard let event = AnthropicSSEParser.parse(line: line) else { continue }
 
-                    switch type {
-                    case "content_block_delta":
-                        if let delta = event["delta"] as? [String: Any],
-                           delta["type"] as? String == "text_delta",
-                           let text = delta["text"] as? String {
-                            assistantText += text
-                            onEvent(.delta(text))
-                        }
+                    switch event {
+                    case .textDelta(let text):
+                        assistantText += text
+                        onEvent(.delta(text))
 
-                    case "error":
-                        let message = (event["error"] as? [String: Any])?["message"] as? String
-                        onEvent(.failed(message ?? "Anthropic API stream error."))
+                    case .error(let message):
+                        onEvent(.failed(message))
                         return
 
-                    case "message_stop":
+                    case .messageStop:
                         self?.history = requestMessages + [["role": "assistant", "content": assistantText]]
                         onEvent(.completed(sessionId: turnSessionId, finalMessage: assistantText))
                         return
-
-                    default:
-                        break
                     }
                 }
 
@@ -121,13 +112,5 @@ final class AnthropicBackend: AgentBackend {
     func reset() {
         history = []
         sessionId = nil
-    }
-
-    private static func apiErrorMessage(from body: String) -> String? {
-        guard let data = body.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
-              let error = json["error"] as? [String: Any],
-              let message = error["message"] as? String else { return nil }
-        return message
     }
 }

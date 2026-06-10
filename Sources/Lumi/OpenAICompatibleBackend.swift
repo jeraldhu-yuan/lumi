@@ -44,6 +44,7 @@ final class OpenAICompatibleBackend: AgentBackend {
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        request.timeoutInterval = 300
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let apiKey = AppConfig.openAIAPIKey, !apiKey.isEmpty {
             request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
@@ -82,24 +83,16 @@ final class OpenAICompatibleBackend: AgentBackend {
                 }
 
                 for try await line in bytes.lines {
-                    guard line.hasPrefix("data: ") else { continue }
-                    let payload = line.dropFirst(6)
+                    guard let event = OpenAIChunkParser.parse(line: line) else { continue }
 
-                    if payload == "[DONE]" {
-                        finishTurn()
-                        return
-                    }
-
-                    guard let data = payload.data(using: .utf8),
-                          let event = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
-                          let choices = event["choices"] as? [[String: Any]],
-                          let choice = choices.first else { continue }
-
-                    if let delta = choice["delta"] as? [String: Any],
-                       let text = delta["content"] as? String,
-                       !text.isEmpty {
+                    switch event {
+                    case .textDelta(let text):
                         assistantText += text
                         onEvent(.delta(text))
+
+                    case .done:
+                        finishTurn()
+                        return
                     }
                 }
 

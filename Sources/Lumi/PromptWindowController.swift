@@ -36,7 +36,7 @@ final class PromptWindowController: NSObject {
             backing: .buffered,
             defer: false
         )
-        window.title = "Sprite"
+        window.title = "Lumi"
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.isMovableByWindowBackground = true
@@ -58,7 +58,7 @@ final class PromptWindowController: NSObject {
     }
 
     func configure(for backend: AgentBackend) {
-        window.title = "Sprite — \(backend.kind.displayName)"
+        window.title = "Lumi — \(backend.kind.displayName)"
         promptView.configure(
             backendName: backend.kind.displayName,
             kind: backend.kind,
@@ -127,7 +127,7 @@ final class PromptView: NSVisualEffectView, NSTextViewDelegate {
 
     private let transcriptTextView = NSTextView()
     private let inputTextView = NSTextView()
-    private let titleLabel = NSTextField(labelWithString: "Sprite")
+    private let titleLabel = NSTextField(labelWithString: "Lumi")
     private let workspaceLabel: NSTextField
     private let placeholderLabel = NSTextField(labelWithString: "Ask anything...")
     private let statusLabel = NSTextField(labelWithString: "")
@@ -227,7 +227,7 @@ final class PromptView: NSVisualEffectView, NSTextViewDelegate {
         openAppButton.target = openSleeve
         openAppButton.action = #selector(ClosureSleeve.invoke)
 
-        Self.styleIconButton(quitButton, symbol: "power", pointSize: 14, tint: .secondaryLabelColor, tooltip: "Quit Sprite")
+        Self.styleIconButton(quitButton, symbol: "power", pointSize: 14, tint: .secondaryLabelColor, tooltip: "Quit Lumi")
         quitButton.target = quitSleeve
         quitButton.action = #selector(ClosureSleeve.invoke)
 

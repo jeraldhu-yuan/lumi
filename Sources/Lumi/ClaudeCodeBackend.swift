@@ -26,7 +26,7 @@ final class ClaudeCodeBackend: AgentBackend {
             }
 
             guard let executable = AppConfig.claudeExecutablePath else {
-                onEvent(.failed("Claude Code CLI not found. Install it (npm install -g @anthropic-ai/claude-code) or set CLAUDE_SPRITE_CLAUDE_PATH."))
+                onEvent(.failed("Claude Code CLI not found. Install it (npm install -g @anthropic-ai/claude-code) or set LUMI_CLAUDE_PATH."))
                 return
             }
 
@@ -78,7 +78,7 @@ final class ClaudeCodeBackend: AgentBackend {
 
         activeProcess = process
 
-        var stdoutBuffer = Data()
+        var lineBuffer = LineBuffer()
         var stderrBuffer = Data()
         var sessionId = existingSessionId
         var streamedText = ""
@@ -96,63 +96,37 @@ final class ClaudeCodeBackend: AgentBackend {
             activeProcess = nil
         }
 
-        func processMessage(_ message: [String: Any]) {
-            let type = message["type"] as? String
-
-            switch type {
-            case "system":
-                if message["subtype"] as? String == "init",
-                   let id = message["session_id"] as? String {
-                    sessionId = id
-                    if existingSessionId == nil {
-                        onEvent(.sessionStarted(id: id))
-                    }
-                    onEvent(.status("Claude Code is thinking..."))
-                }
-
-            case "stream_event":
-                guard let event = message["event"] as? [String: Any],
-                      event["type"] as? String == "content_block_delta",
-                      let delta = event["delta"] as? [String: Any],
-                      delta["type"] as? String == "text_delta",
-                      let text = delta["text"] as? String else { return }
-                streamedText += text
-                onEvent(.delta(text))
-
-            case "result":
-                let isError = message["is_error"] as? Bool ?? false
-                let resultText = (message["result"] as? String) ?? streamedText
-                if let id = message["session_id"] as? String {
-                    sessionId = id
-                }
-                if isError {
-                    finish(.failed(resultText.isEmpty ? "Claude Code turn failed." : resultText))
-                } else {
-                    finish(.completed(sessionId: sessionId, finalMessage: resultText))
-                }
-
-            default:
-                break
-            }
-        }
-
         stdoutPipe.fileHandleForReading.readabilityHandler = { handle in
             let chunk = handle.availableData
             guard !chunk.isEmpty else { return }
 
             self.queue.async {
-                stdoutBuffer.append(chunk)
+                for line in lineBuffer.append(chunk) {
+                    guard let event = ClaudeCodeStreamParser.parse(line: line) else { continue }
 
-                while let newlineIndex = stdoutBuffer.firstIndex(of: 0x0A) {
-                    let lineData = stdoutBuffer.subdata(in: stdoutBuffer.startIndex..<newlineIndex)
-                    stdoutBuffer.removeSubrange(stdoutBuffer.startIndex...newlineIndex)
+                    switch event {
+                    case .sessionStarted(let id):
+                        sessionId = id
+                        if existingSessionId == nil {
+                            onEvent(.sessionStarted(id: id))
+                        }
+                        onEvent(.status("Claude Code is thinking..."))
 
-                    guard !lineData.isEmpty,
-                          let message = try? JSONSerialization.jsonObject(with: lineData, options: []) as? [String: Any] else {
-                        continue
+                    case .textDelta(let text):
+                        streamedText += text
+                        onEvent(.delta(text))
+
+                    case .success(let resultSessionId, let finalText):
+                        finish(.completed(
+                            sessionId: resultSessionId ?? sessionId,
+                            finalMessage: finalText.isEmpty ? streamedText : finalText
+                        ))
+                        return
+
+                    case .failure(let message):
+                        finish(.failed(message))
+                        return
                     }
-                    processMessage(message)
-                    if completed { return }
                 }
             }
         }

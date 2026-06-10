@@ -58,7 +58,7 @@ final class CodexBackend: AgentBackend {
 
         activeProcess = process
 
-        var stdoutBuffer = Data()
+        var lineBuffer = LineBuffer()
         var stderrBuffer = Data()
         var threadId = existingThreadId
         var finalMessage = ""
@@ -240,7 +240,7 @@ final class CodexBackend: AgentBackend {
                 return true
 
             case "account/chatgptAuthTokens/refresh", "attestation/generate":
-                sendError(id: id, message: "\(method) is not supported by Codex Sprite.")
+                sendError(id: id, message: "\(method) is not supported by Lumi.")
                 return true
 
             default:
@@ -283,13 +283,7 @@ final class CodexBackend: AgentBackend {
             guard !chunk.isEmpty else { return }
 
             self.queue.async {
-                stdoutBuffer.append(chunk)
-
-                while let newlineIndex = stdoutBuffer.firstIndex(of: 0x0A) {
-                    let lineData = stdoutBuffer.subdata(in: stdoutBuffer.startIndex..<newlineIndex)
-                    stdoutBuffer.removeSubrange(stdoutBuffer.startIndex...newlineIndex)
-
-                    guard !lineData.isEmpty else { continue }
+                for lineData in lineBuffer.append(chunk) {
                     guard let message = try? JSONSerialization.jsonObject(with: lineData, options: []) as? [String: Any] else {
                         continue
                     }
@@ -449,8 +443,8 @@ final class CodexBackend: AgentBackend {
             "id": 1,
             "params": [
                 "clientInfo": [
-                    "name": "codex_sprite",
-                    "title": "Codex Sprite",
+                    "name": "lumi",
+                    "title": "Lumi",
                     "version": "0.2.0"
                 ],
                 "capabilities": [

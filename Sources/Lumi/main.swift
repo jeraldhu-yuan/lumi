@@ -1,7 +1,7 @@
 import AppKit
 
 @main
-struct CodexSpriteMain {
+struct LumiMain {
     @MainActor
     static func main() {
         let application = NSApplication.shared

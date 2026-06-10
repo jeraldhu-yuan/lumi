@@ -8,7 +8,7 @@
 
 She flies, naps, gets curious, and watches your cursor. Click her, type a request, and she relays it to the backend of your choice — Codex, Claude Code, the Claude API, or any local model — then streams the answer back while she works.
 
-![Lumi demo](docs/media/sprite-demo.gif)
+https://github.com/user-attachments/assets/ee137b4e-1128-4d24-b2ef-56fb5e3fd508
 
 ## Quick Start
 
@@ -103,7 +103,6 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full tour, including ho
 - Interactive input prompts, MCP elicitations, and dynamic tool calls aren't surfaced in the UI for the Codex backend yet.
 - Claude Code approvals are policy-based, not interactive — headless mode denies whatever the policy doesn't cover.
 - The Codex app-server protocol is experimental and may change.
-- The demo GIF is assembled from sprite frames; a real screen recording is on the wishlist.
 
 ## Contributing
 

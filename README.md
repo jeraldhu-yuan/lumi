@@ -1,6 +1,6 @@
 # Lumi ✨
 
-[![CI](https://github.com/JJ9276489/lumi/actions/workflows/ci.yml/badge.svg)](https://github.com/JJ9276489/lumi/actions/workflows/ci.yml)
+[![CI](https://github.com/jeraldhu-yuan/lumi/actions/workflows/ci.yml/badge.svg)](https://github.com/jeraldhu-yuan/lumi/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![macOS 14+](https://img.shields.io/badge/macOS-14%2B-black)
 
@@ -13,7 +13,7 @@ https://github.com/user-attachments/assets/ee137b4e-1128-4d24-b2ef-56fb5e3fd508
 ## Quick Start
 
 ```bash
-git clone https://github.com/JJ9276489/lumi.git
+git clone https://github.com/jeraldhu-yuan/lumi.git
 cd lumi
 ./script/build_and_run.sh
 ```

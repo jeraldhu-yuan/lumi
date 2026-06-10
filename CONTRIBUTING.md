@@ -5,7 +5,7 @@ Thanks for helping make the desktop a little more alive.
 ## Setup
 
 ```bash
-git clone https://github.com/JJ9276489/lumi.git
+git clone https://github.com/jeraldhu-yuan/lumi.git
 cd lumi
 ./script/build_and_run.sh   # build + launch
 ./script/test.sh            # run the test suite

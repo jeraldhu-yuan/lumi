@@ -4,11 +4,13 @@ import AppKit
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var spriteController: SpriteWindowController?
     private var promptController: PromptWindowController?
-    private let codexClient = CodexAppServerClient()
+    private var backend: AgentBackend = BackendFactory.make(AppConfig.backendKind)
     private var isSending = false
-    private var activeThreadId: String?
+    private var activeSessionId: String?
     private var responseTranscript = ""
-    private var currentCodexResponse = ""
+    private var currentResponse = ""
+
+    private var backendName: String { backend.kind.displayName }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -17,14 +19,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onSubmit: { [weak self] prompt in
                 self?.submit(prompt: prompt)
             },
-            onOpenCodex: {
+            onCancel: { [weak self] in
+                self?.backend.cancel()
+            },
+            onOpenCompanionApp: {
                 Self.openCodexApp()
             },
             onQuit: {
                 NSApp.terminate(nil)
             },
             onNewThread: { [weak self] in
-                self?.startNewThread()
+                self?.startNewSession()
+            },
+            onBackendChange: { [weak self] kind in
+                self?.switchBackend(to: kind)
             },
             onTextChange: { [weak self] text in
                 self?.promptTextChanged(text)
@@ -41,18 +49,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.facePrompt()
             self.spriteController?.setMood(.listening)
             promptController.update(
-                status: self.activeThreadId == nil ? "Ready for a new Codex thread." : "Active thread. Send a follow-up.",
+                status: self.activeSessionId == nil
+                    ? "Ready for a new \(self.backendName) session."
+                    : "Active session. Send a follow-up.",
                 isSending: self.isSending,
-                threadId: self.activeThreadId
+                threadId: self.activeSessionId
             )
         }
 
         self.promptController = promptController
         self.spriteController = spriteController
 
+        promptController.configure(for: backend)
         spriteController.show()
         promptController.update(
-            status: "Ready in \(URL(fileURLWithPath: AppConfig.workspacePath).lastPathComponent)",
+            status: backend.capabilities.usesWorkspace
+                ? "Ready in \(URL(fileURLWithPath: AppConfig.workspacePath).lastPathComponent)"
+                : "Ready to chat with \(backendName).",
             isSending: false,
             threadId: nil
         )
@@ -67,9 +80,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let continuingThreadId = activeThreadId
-        if continuingThreadId == nil {
-            activeThreadId = nil
+        let continuingSessionId = activeSessionId
+        if continuingSessionId == nil {
+            activeSessionId = nil
             responseTranscript = ""
             promptController?.clearResponse()
         }
@@ -79,15 +92,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         facePrompt()
         spriteController?.setMood(.working)
         promptController?.update(
-            status: continuingThreadId == nil ? "Starting Codex thread..." : "Continuing active Codex thread...",
+            status: continuingSessionId == nil
+                ? "Starting \(backendName) session..."
+                : "Continuing \(backendName) session...",
             isSending: true,
-            threadId: continuingThreadId
+            threadId: continuingSessionId
         )
 
-        codexClient.submit(
+        backend.submit(
             prompt: trimmed,
             workspacePath: AppConfig.workspacePath,
-            existingThreadId: continuingThreadId
+            existingSessionId: continuingSessionId
         ) { [weak self] event in
             Task { @MainActor in
                 guard let self else { return }
@@ -95,41 +110,111 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 switch event {
                 case .status(let message):
                     self.spriteController?.setMood(.working)
-                    self.promptController?.update(status: message, isSending: true, threadId: self.activeThreadId ?? continuingThreadId)
+                    self.promptController?.update(status: message, isSending: true, threadId: self.activeSessionId ?? continuingSessionId)
 
-                case .threadCreated(let threadId, _):
-                    self.activeThreadId = threadId
+                case .sessionStarted(let sessionId):
+                    self.activeSessionId = sessionId
                     self.spriteController?.setMood(.working)
                     self.promptController?.update(
-                        status: "Codex is thinking...",
+                        status: "\(self.backendName) is thinking...",
                         isSending: true,
-                        threadId: threadId
+                        threadId: sessionId
                     )
 
-                case .agentDelta(let delta):
-                    self.appendCodexDelta(delta)
+                case .delta(let delta):
+                    self.appendResponseDelta(delta)
                     self.spriteController?.setMood(.threadActive)
 
-                case .completed(let threadId, let finalMessage):
+                case .approvalRequest(let description, let respond):
+                    self.spriteController?.setMood(.listening)
+                    self.promptController?.update(
+                        status: "Waiting for your approval...",
+                        isSending: true,
+                        threadId: self.activeSessionId ?? continuingSessionId
+                    )
+                    self.presentApproval(description: description, respond: respond)
+
+                case .completed(let sessionId, let finalMessage):
                     self.isSending = false
-                    self.activeThreadId = threadId
-                    self.finishCodexResponse(finalMessage: finalMessage)
+                    self.activeSessionId = sessionId ?? self.activeSessionId
+                    self.finishResponse(finalMessage: finalMessage)
                     self.promptController?.clearPrompt()
                     self.spriteController?.setMood(.threadActive)
                     self.promptController?.update(
                         status: "Ready. Send a follow-up whenever.",
                         isSending: false,
-                        threadId: threadId
+                        threadId: self.activeSessionId
                     )
 
                 case .failed(let message):
                     self.isSending = false
                     self.appendSystemLine("Error: \(message)")
                     self.spriteController?.setMood(.failed)
-                    self.promptController?.update(status: message, isSending: false, threadId: self.activeThreadId)
+                    self.promptController?.update(status: message, isSending: false, threadId: self.activeSessionId)
                 }
             }
         }
+    }
+
+    private func presentApproval(description: String, respond: @escaping (Bool) -> Void) {
+        guard let promptController else {
+            respond(false)
+            return
+        }
+
+        if let spriteFrame = spriteController?.window.frame {
+            promptController.show(near: spriteFrame)
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "\(backendName) is asking to:"
+        alert.informativeText = description
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Allow")
+        alert.addButton(withTitle: "Deny")
+
+        alert.beginSheetModal(for: promptController.window) { [weak self] response in
+            let approved = response == .alertFirstButtonReturn
+            respond(approved)
+            Task { @MainActor in
+                guard let self else { return }
+                self.spriteController?.setMood(.working)
+                self.promptController?.update(
+                    status: approved ? "Approved. \(self.backendName) is working..." : "Denied. Waiting for \(self.backendName)...",
+                    isSending: true,
+                    threadId: self.activeSessionId
+                )
+            }
+        }
+    }
+
+    private func switchBackend(to kind: BackendKind) {
+        guard kind != backend.kind else { return }
+
+        guard !isSending else {
+            promptController?.configure(for: backend)
+            promptController?.update(
+                status: "Stop the current request before switching backends.",
+                isSending: true,
+                threadId: activeSessionId
+            )
+            return
+        }
+
+        AppConfig.setBackendKind(kind)
+        backend = BackendFactory.make(kind)
+        activeSessionId = nil
+        responseTranscript = ""
+        currentResponse = ""
+        promptController?.clearResponse()
+        promptController?.clearPrompt()
+        promptController?.configure(for: backend)
+        promptController?.update(
+            status: "Switched to \(backendName). Ready for a new session.",
+            isSending: false,
+            threadId: nil
+        )
+        spriteController?.setMood(.listening)
     }
 
     private func promptTextChanged(_ text: String) {
@@ -141,42 +226,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func promptClosed() {
         guard !isSending else { return }
-        spriteController?.setMood(activeThreadId == nil ? .idle : .threadActive)
+        spriteController?.setMood(activeSessionId == nil ? .idle : .threadActive)
     }
 
-    private func startNewThread() {
+    private func startNewSession() {
         guard !isSending else { return }
-        activeThreadId = nil
+        activeSessionId = nil
         responseTranscript = ""
-        currentCodexResponse = ""
+        currentResponse = ""
+        backend.reset()
         promptController?.clearResponse()
         promptController?.clearPrompt()
-        promptController?.update(status: "Ready for a new Codex thread.", isSending: false, threadId: nil)
+        promptController?.update(status: "Ready for a new \(backendName) session.", isSending: false, threadId: nil)
         spriteController?.setMood(.listening)
     }
 
     private func beginTranscriptTurn(prompt: String) {
-        currentCodexResponse = ""
+        currentResponse = ""
         let separator = responseTranscript.isEmpty ? "" : "\n\n"
-        responseTranscript += "\(separator)You: \(prompt)\n\nCodex: "
+        responseTranscript += "\(separator)You: \(prompt)\n\n\(backendName): "
         promptController?.setResponse(responseTranscript)
     }
 
-    private func appendCodexDelta(_ delta: String) {
-        currentCodexResponse += delta
+    private func appendResponseDelta(_ delta: String) {
+        currentResponse += delta
         responseTranscript += delta
         promptController?.appendResponse(delta)
     }
 
-    private func finishCodexResponse(finalMessage: String) {
-        let trimmedCurrent = currentCodexResponse.trimmingCharacters(in: .whitespacesAndNewlines)
+    private func finishResponse(finalMessage: String) {
+        let trimmedCurrent = currentResponse.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedFinal = finalMessage.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if trimmedCurrent.isEmpty && !trimmedFinal.isEmpty {
             responseTranscript += trimmedFinal
             promptController?.appendResponse(trimmedFinal)
         }
-        currentCodexResponse = ""
+        currentResponse = ""
     }
 
     private func appendSystemLine(_ text: String) {

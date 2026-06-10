@@ -2,8 +2,8 @@
 set -euo pipefail
 
 MODE="${1:-run}"
-APP_NAME="CodexSprite"
-BUNDLE_ID="com.github.jj9276489.codexdesktopsprite"
+APP_NAME="Sprite"
+BUNDLE_ID="com.github.jj9276489.desktopsprite"
 MIN_SYSTEM_VERSION="14.0"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -18,6 +18,7 @@ INFO_PLIST="$APP_CONTENTS/Info.plist"
 cd "$ROOT_DIR"
 
 pkill -x "$APP_NAME" >/dev/null 2>&1 || true
+pkill -x "CodexSprite" >/dev/null 2>&1 || true
 
 mkdir -p "$ROOT_DIR/.build"
 SWIFTPM_LOG="$ROOT_DIR/.build/swiftpm-build.log"

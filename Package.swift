@@ -8,7 +8,7 @@ let package = Package(
         .macOS(.v14)
     ],
     products: [
-        .executable(name: "CodexSprite", targets: ["CodexSprite"])
+        .executable(name: "Sprite", targets: ["CodexSprite"])
     ],
     dependencies: [],
     targets: [

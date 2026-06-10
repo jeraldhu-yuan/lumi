@@ -11,24 +11,35 @@ final class PromptWindowController: NSObject {
 
     init(
         onSubmit: @escaping (String) -> Void,
-        onOpenCodex: @escaping () -> Void,
+        onCancel: @escaping () -> Void,
+        onOpenCompanionApp: @escaping () -> Void,
         onQuit: @escaping () -> Void,
         onNewThread: @escaping () -> Void,
+        onBackendChange: @escaping (BackendKind) -> Void,
         onTextChange: @escaping (String) -> Void,
         onClose: @escaping () -> Void
     ) {
         self.onSubmit = onSubmit
         self.onTextChange = onTextChange
         self.onClose = onClose
-        promptView = PromptView(onOpenCodex: onOpenCodex, onQuit: onQuit, onNewThread: onNewThread)
+        promptView = PromptView(
+            onCancel: onCancel,
+            onOpenCompanionApp: onOpenCompanionApp,
+            onQuit: onQuit,
+            onNewThread: onNewThread,
+            onBackendChange: onBackendChange
+        )
 
         window = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 460, height: 370),
-            styleMask: [.titled, .closable, .utilityWindow],
+            contentRect: NSRect(x: 0, y: 0, width: 420, height: 432),
+            styleMask: [.titled, .closable, .utilityWindow, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
-        window.title = "Ask Codex"
+        window.title = "Sprite"
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.isMovableByWindowBackground = true
         window.isFloatingPanel = true
         window.level = .floating
         window.isReleasedWhenClosed = false
@@ -44,6 +55,16 @@ final class PromptWindowController: NSObject {
         promptView.onSubmit = { [weak self] prompt in
             self?.onSubmit(prompt)
         }
+    }
+
+    func configure(for backend: AgentBackend) {
+        window.title = "Sprite — \(backend.kind.displayName)"
+        promptView.configure(
+            backendName: backend.kind.displayName,
+            kind: backend.kind,
+            showsCompanionApp: backend.capabilities.canOpenCompanionApp,
+            showsWorkspace: backend.capabilities.usesWorkspace
+        )
     }
 
     func show(near spriteFrame: NSRect) {
@@ -104,98 +125,121 @@ final class PromptView: NSVisualEffectView, NSTextViewDelegate {
     var onSubmit: ((String) -> Void)?
     var onTextChange: ((String) -> Void)?
 
-    private let textView = NSTextView()
-    private let responseTextView = NSTextView()
+    private let transcriptTextView = NSTextView()
+    private let inputTextView = NSTextView()
+    private let titleLabel = NSTextField(labelWithString: "Sprite")
+    private let workspaceLabel: NSTextField
+    private let placeholderLabel = NSTextField(labelWithString: "Ask anything...")
     private let statusLabel = NSTextField(labelWithString: "")
-    private let threadLabel = NSTextField(labelWithString: "")
-    private let sendButton = NSButton(title: "Send", target: nil, action: nil)
-    private let newThreadButton = NSButton(title: "New Thread", target: nil, action: nil)
-    private let openButton = NSButton(title: "Open Codex", target: nil, action: nil)
-    private let quitButton = NSButton(title: "Quit", target: nil, action: nil)
+    private let sendButton = NSButton()
+    private let newSessionButton = NSButton()
+    private let openAppButton = NSButton()
+    private let quitButton = NSButton()
+    private let backendPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let onCancel: () -> Void
+    private let onBackendChange: (BackendKind) -> Void
     private let openSleeve: ClosureSleeve
     private let quitSleeve: ClosureSleeve
     private let newThreadSleeve: ClosureSleeve
+    private var isSending = false
 
-    init(onOpenCodex: @escaping () -> Void, onQuit: @escaping () -> Void, onNewThread: @escaping () -> Void) {
-        openSleeve = ClosureSleeve(onOpenCodex)
+    init(
+        onCancel: @escaping () -> Void,
+        onOpenCompanionApp: @escaping () -> Void,
+        onQuit: @escaping () -> Void,
+        onNewThread: @escaping () -> Void,
+        onBackendChange: @escaping (BackendKind) -> Void
+    ) {
+        self.onCancel = onCancel
+        self.onBackendChange = onBackendChange
+        openSleeve = ClosureSleeve(onOpenCompanionApp)
         quitSleeve = ClosureSleeve(onQuit)
         newThreadSleeve = ClosureSleeve(onNewThread)
+        workspaceLabel = NSTextField(labelWithString: URL(fileURLWithPath: AppConfig.workspacePath).path)
 
         super.init(frame: .zero)
         material = .hudWindow
         blendingMode = .behindWindow
         state = .active
 
-        let title = NSTextField(labelWithString: "Ask Codex")
-        title.font = .systemFont(ofSize: 18, weight: .semibold)
-        title.textColor = .labelColor
+        titleLabel.font = .systemFont(ofSize: 16, weight: .semibold)
+        titleLabel.textColor = .labelColor
 
-        let workspace = NSTextField(labelWithString: URL(fileURLWithPath: AppConfig.workspacePath).path)
-        workspace.font = .systemFont(ofSize: 11)
-        workspace.textColor = .secondaryLabelColor
-        workspace.lineBreakMode = .byTruncatingMiddle
+        backendPopup.addItems(withTitles: BackendKind.allCases.map(\.displayName))
+        backendPopup.controlSize = .small
+        backendPopup.font = .systemFont(ofSize: 11, weight: .medium)
+        backendPopup.target = self
+        backendPopup.action = #selector(backendChanged)
 
-        let responseScrollView = NSScrollView()
-        responseScrollView.hasVerticalScroller = true
-        responseScrollView.borderType = .bezelBorder
-        responseScrollView.documentView = responseTextView
+        let titleRow = NSStackView(views: [titleLabel, NSView(), backendPopup])
+        titleRow.orientation = .horizontal
+        titleRow.spacing = 8
+        titleRow.alignment = .centerY
 
-        responseTextView.font = .systemFont(ofSize: 13)
-        responseTextView.isRichText = false
-        responseTextView.isEditable = false
-        responseTextView.isSelectable = true
-        responseTextView.drawsBackground = true
-        responseTextView.backgroundColor = NSColor.textBackgroundColor.withAlphaComponent(0.72)
-        responseTextView.textColor = .labelColor
-        responseTextView.textContainerInset = NSSize(width: 8, height: 8)
+        workspaceLabel.font = .systemFont(ofSize: 10)
+        workspaceLabel.textColor = .tertiaryLabelColor
+        workspaceLabel.lineBreakMode = .byTruncatingMiddle
 
-        let scrollView = NSScrollView()
-        scrollView.hasVerticalScroller = true
-        scrollView.borderType = .bezelBorder
-        scrollView.documentView = textView
+        let transcriptScroll = Self.roundedScroll(for: transcriptTextView, backgroundAlpha: 0.45)
+        transcriptTextView.font = .systemFont(ofSize: 13)
+        transcriptTextView.isRichText = false
+        transcriptTextView.isEditable = false
+        transcriptTextView.isSelectable = true
+        transcriptTextView.drawsBackground = false
+        transcriptTextView.textColor = .labelColor
+        transcriptTextView.textContainerInset = NSSize(width: 10, height: 10)
 
-        textView.font = .systemFont(ofSize: 14)
-        textView.isRichText = false
-        textView.allowsUndo = true
-        textView.string = ""
-        textView.textContainerInset = NSSize(width: 8, height: 8)
-        textView.delegate = self
+        let inputScroll = Self.roundedScroll(for: inputTextView, backgroundAlpha: 0.65)
+        inputTextView.font = .systemFont(ofSize: 13)
+        inputTextView.isRichText = false
+        inputTextView.allowsUndo = true
+        inputTextView.drawsBackground = false
+        inputTextView.string = ""
+        inputTextView.textContainerInset = NSSize(width: 10, height: 9)
+        inputTextView.delegate = self
 
-        statusLabel.font = .systemFont(ofSize: 12)
-        statusLabel.textColor = .secondaryLabelColor
-        statusLabel.lineBreakMode = .byTruncatingTail
+        placeholderLabel.font = .systemFont(ofSize: 13)
+        placeholderLabel.textColor = .placeholderTextColor
+        placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
+        inputScroll.addSubview(placeholderLabel)
 
-        threadLabel.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
-        threadLabel.textColor = .tertiaryLabelColor
-        threadLabel.lineBreakMode = .byTruncatingMiddle
-
-        sendButton.bezelStyle = .rounded
+        Self.styleIconButton(sendButton, symbol: "arrow.up.circle.fill", pointSize: 26, tint: .controlAccentColor, tooltip: "Send (⌘↩)")
         sendButton.keyEquivalent = "\r"
         sendButton.keyEquivalentModifierMask = [.command]
         sendButton.target = self
         sendButton.action = #selector(send)
 
-        openButton.bezelStyle = .rounded
-        openButton.target = openSleeve
-        openButton.action = #selector(ClosureSleeve.invoke)
+        let inputRow = NSStackView(views: [inputScroll, sendButton])
+        inputRow.orientation = .horizontal
+        inputRow.spacing = 8
+        inputRow.alignment = .centerY
 
-        newThreadButton.bezelStyle = .rounded
-        newThreadButton.target = newThreadSleeve
-        newThreadButton.action = #selector(ClosureSleeve.invoke)
+        statusLabel.font = .systemFont(ofSize: 11)
+        statusLabel.textColor = .secondaryLabelColor
+        statusLabel.lineBreakMode = .byTruncatingTail
+        statusLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-        quitButton.bezelStyle = .rounded
+        Self.styleIconButton(newSessionButton, symbol: "plus.bubble", pointSize: 14, tint: .secondaryLabelColor, tooltip: "New session")
+        newSessionButton.target = newThreadSleeve
+        newSessionButton.action = #selector(ClosureSleeve.invoke)
+
+        Self.styleIconButton(openAppButton, symbol: "arrow.up.forward.app", pointSize: 14, tint: .secondaryLabelColor, tooltip: "Open Codex Desktop")
+        openAppButton.target = openSleeve
+        openAppButton.action = #selector(ClosureSleeve.invoke)
+
+        Self.styleIconButton(quitButton, symbol: "power", pointSize: 14, tint: .secondaryLabelColor, tooltip: "Quit Sprite")
         quitButton.target = quitSleeve
         quitButton.action = #selector(ClosureSleeve.invoke)
 
-        let buttonRow = NSStackView(views: [quitButton, NSView(), newThreadButton, openButton, sendButton])
-        buttonRow.orientation = .horizontal
-        buttonRow.spacing = 8
-        buttonRow.alignment = .centerY
-        buttonRow.distribution = .fill
+        let footerRow = NSStackView(views: [statusLabel, NSView(), newSessionButton, openAppButton, quitButton])
+        footerRow.orientation = .horizontal
+        footerRow.spacing = 10
+        footerRow.alignment = .centerY
 
-        let stack = NSStackView(views: [title, workspace, responseScrollView, scrollView, statusLabel, threadLabel, buttonRow])
+        let stack = NSStackView(views: [titleRow, workspaceLabel, transcriptScroll, inputRow, footerRow])
         stack.orientation = .vertical
-        stack.spacing = 8
+        stack.spacing = 10
+        stack.setCustomSpacing(2, after: titleRow)
         stack.translatesAutoresizingMaskIntoConstraints = false
 
         addSubview(stack)
@@ -203,14 +247,13 @@ final class PromptView: NSVisualEffectView, NSTextViewDelegate {
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
             stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
-            stack.topAnchor.constraint(equalTo: topAnchor, constant: 14),
+            stack.topAnchor.constraint(equalTo: topAnchor, constant: 30),
             stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -14),
-            responseScrollView.heightAnchor.constraint(equalToConstant: 112),
-            scrollView.heightAnchor.constraint(equalToConstant: 88),
-            sendButton.widthAnchor.constraint(equalToConstant: 82),
-            newThreadButton.widthAnchor.constraint(equalToConstant: 104),
-            openButton.widthAnchor.constraint(equalToConstant: 108),
-            quitButton.widthAnchor.constraint(equalToConstant: 72)
+            transcriptScroll.heightAnchor.constraint(equalToConstant: 208),
+            inputScroll.heightAnchor.constraint(equalToConstant: 64),
+            sendButton.widthAnchor.constraint(equalToConstant: 34),
+            placeholderLabel.leadingAnchor.constraint(equalTo: inputScroll.leadingAnchor, constant: 14),
+            placeholderLabel.topAnchor.constraint(equalTo: inputScroll.topAnchor, constant: 10)
         ])
     }
 
@@ -218,49 +261,108 @@ final class PromptView: NSVisualEffectView, NSTextViewDelegate {
         fatalError("init(coder:) has not been implemented")
     }
 
+    private static func roundedScroll(for textView: NSTextView, backgroundAlpha: CGFloat) -> NSScrollView {
+        let scrollView = NSScrollView()
+        scrollView.hasVerticalScroller = true
+        scrollView.autohidesScrollers = true
+        scrollView.borderType = .noBorder
+        scrollView.drawsBackground = true
+        scrollView.backgroundColor = NSColor.textBackgroundColor.withAlphaComponent(backgroundAlpha)
+        scrollView.documentView = textView
+        scrollView.wantsLayer = true
+        scrollView.layer?.cornerRadius = 10
+        scrollView.layer?.masksToBounds = true
+        return scrollView
+    }
+
+    private static func styleIconButton(_ button: NSButton, symbol: String, pointSize: CGFloat, tint: NSColor, tooltip: String) {
+        let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .medium)
+        button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: tooltip)?
+            .withSymbolConfiguration(config)
+        button.isBordered = false
+        button.contentTintColor = tint
+        button.toolTip = tooltip
+        button.imagePosition = .imageOnly
+        button.setButtonType(.momentaryChange)
+    }
+
+    func configure(backendName: String, kind: BackendKind, showsCompanionApp: Bool, showsWorkspace: Bool) {
+        placeholderLabel.stringValue = "Ask \(backendName) anything..."
+        openAppButton.isHidden = !showsCompanionApp
+        workspaceLabel.isHidden = !showsWorkspace
+        if let index = BackendKind.allCases.firstIndex(of: kind) {
+            backendPopup.selectItem(at: index)
+        }
+    }
+
     func focus() {
-        window?.makeFirstResponder(textView)
+        window?.makeFirstResponder(inputTextView)
     }
 
     func update(status: String, isSending: Bool, threadId: String?) {
+        self.isSending = isSending
         statusLabel.stringValue = status
-        threadLabel.stringValue = threadId.map { "thread: \($0)" } ?? ""
-        sendButton.isEnabled = !isSending
-        newThreadButton.isEnabled = !isSending
-        textView.isEditable = !isSending
+        statusLabel.toolTip = threadId.map { "Session: \($0)" }
+
+        let symbol = isSending ? "stop.circle.fill" : "arrow.up.circle.fill"
+        let config = NSImage.SymbolConfiguration(pointSize: 26, weight: .medium)
+        sendButton.image = NSImage(systemSymbolName: symbol, accessibilityDescription: isSending ? "Stop" : "Send")?
+            .withSymbolConfiguration(config)
+        sendButton.toolTip = isSending ? "Stop" : "Send (⌘↩)"
+
+        newSessionButton.isEnabled = !isSending
+        backendPopup.isEnabled = !isSending
+        inputTextView.isEditable = !isSending
+        updatePlaceholderVisibility()
     }
 
     func setResponse(_ text: String) {
-        responseTextView.string = text
-        scrollResponseToBottom()
+        transcriptTextView.string = text
+        scrollTranscriptToBottom()
     }
 
     func appendResponse(_ text: String) {
-        responseTextView.string += text
-        scrollResponseToBottom()
+        transcriptTextView.string += text
+        scrollTranscriptToBottom()
     }
 
     func clearResponse() {
-        responseTextView.string = ""
+        transcriptTextView.string = ""
     }
 
     func clearPrompt() {
-        textView.string = ""
+        inputTextView.string = ""
+        updatePlaceholderVisibility()
         onTextChange?("")
     }
 
     @objc private func send() {
-        onSubmit?(textView.string)
+        if isSending {
+            onCancel()
+        } else {
+            onSubmit?(inputTextView.string)
+        }
+    }
+
+    @objc private func backendChanged() {
+        let index = backendPopup.indexOfSelectedItem
+        guard index >= 0, index < BackendKind.allCases.count else { return }
+        onBackendChange(BackendKind.allCases[index])
     }
 
     func textDidChange(_ notification: Notification) {
-        onTextChange?(textView.string)
+        updatePlaceholderVisibility()
+        onTextChange?(inputTextView.string)
     }
 
-    private func scrollResponseToBottom() {
-        let length = (responseTextView.string as NSString).length
+    private func updatePlaceholderVisibility() {
+        placeholderLabel.isHidden = !inputTextView.string.isEmpty
+    }
+
+    private func scrollTranscriptToBottom() {
+        let length = (transcriptTextView.string as NSString).length
         guard length > 0 else { return }
-        responseTextView.scrollRangeToVisible(NSRange(location: length, length: 0))
+        transcriptTextView.scrollRangeToVisible(NSRange(location: length, length: 0))
     }
 }
 

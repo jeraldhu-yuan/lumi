@@ -1,22 +1,22 @@
 import Foundation
 
-enum CodexSubmissionEvent {
-    case status(String)
-    case threadCreated(threadId: String, path: String?)
-    case agentDelta(String)
-    case completed(threadId: String, finalMessage: String)
-    case failed(String)
-}
+final class CodexBackend: AgentBackend {
+    let kind: BackendKind = .codex
+    let capabilities = BackendCapabilities(
+        usesWorkspace: true,
+        supportsApprovals: true,
+        canOpenCompanionApp: true
+    )
 
-final class CodexAppServerClient {
-    private let queue = DispatchQueue(label: "CodexAppServerClient")
+    private let queue = DispatchQueue(label: "CodexBackend")
     private var activeProcess: Process?
+    private var cancelAction: (() -> Void)?
 
     func submit(
         prompt: String,
         workspacePath: String,
-        existingThreadId: String? = nil,
-        onEvent: @escaping (CodexSubmissionEvent) -> Void
+        existingSessionId: String?,
+        onEvent: @escaping (AgentEvent) -> Void
     ) {
         queue.async { [weak self] in
             guard let self else { return }
@@ -26,15 +26,23 @@ final class CodexAppServerClient {
                 return
             }
 
-            self.run(prompt: prompt, workspacePath: workspacePath, existingThreadId: existingThreadId, onEvent: onEvent)
+            self.run(prompt: prompt, workspacePath: workspacePath, existingThreadId: existingSessionId, onEvent: onEvent)
         }
     }
+
+    func cancel() {
+        queue.async { [weak self] in
+            self?.cancelAction?()
+        }
+    }
+
+    func reset() {}
 
     private func run(
         prompt: String,
         workspacePath: String,
         existingThreadId: String?,
-        onEvent: @escaping (CodexSubmissionEvent) -> Void
+        onEvent: @escaping (AgentEvent) -> Void
     ) {
         let process = Process()
         let stdinPipe = Pipe()
@@ -53,7 +61,6 @@ final class CodexAppServerClient {
         var stdoutBuffer = Data()
         var stderrBuffer = Data()
         var threadId = existingThreadId
-        var threadPath: String?
         var finalMessage = ""
         var completed = false
         var lastTurnError: String?
@@ -117,17 +124,41 @@ final class CodexAppServerClient {
             return text.isEmpty ? nil : text
         }
 
-        func approveServerRequest(method: String, id: Any, params: [String: Any]) -> Bool {
+        func requestApproval(
+            description: String,
+            onApprove: @escaping () -> Void,
+            onDeny: @escaping () -> Void
+        ) {
+            if AppConfig.codexAutoApprove {
+                onEvent(.status("Auto-approving: \(description)"))
+                onApprove()
+                return
+            }
+
+            onEvent(.approvalRequest(description: description) { [queue] approved in
+                queue.async {
+                    approved ? onApprove() : onDeny()
+                }
+            })
+        }
+
+        func handleServerRequest(method: String, id: Any, params: [String: Any]) -> Bool {
             switch method {
             case "item/commandExecution/requestApproval":
-                let command = params["command"] as? String
-                onEvent(.status("Approving command: \(command ?? "shell command")"))
-                sendResponse(id: id, result: ["decision": "acceptForSession"])
+                let command = params["command"] as? String ?? "a shell command"
+                requestApproval(
+                    description: "Run command: \(command)",
+                    onApprove: { sendResponse(id: id, result: ["decision": "acceptForSession"]) },
+                    onDeny: { sendResponse(id: id, result: ["decision": "decline"]) }
+                )
                 return true
 
             case "item/fileChange/requestApproval":
-                onEvent(.status("Approving workspace file changes..."))
-                sendResponse(id: id, result: ["decision": "acceptForSession"])
+                requestApproval(
+                    description: "Apply file changes in the workspace",
+                    onApprove: { sendResponse(id: id, result: ["decision": "acceptForSession"]) },
+                    onDeny: { sendResponse(id: id, result: ["decision": "decline"]) }
+                )
                 return true
 
             case "item/permissions/requestApproval":
@@ -139,25 +170,46 @@ final class CodexAppServerClient {
                 if let fileSystem = requested["fileSystem"], !isNull(fileSystem) {
                     granted["fileSystem"] = fileSystem
                 }
-                onEvent(.status("Granting requested turn permissions..."))
-                sendResponse(
-                    id: id,
-                    result: [
-                        "permissions": granted,
-                        "scope": "turn",
-                        "strictAutoReview": false
-                    ]
+                let names = granted.keys.sorted().joined(separator: ", ")
+                requestApproval(
+                    description: "Grant turn permissions: \(names.isEmpty ? "none" : names)",
+                    onApprove: {
+                        sendResponse(
+                            id: id,
+                            result: [
+                                "permissions": granted,
+                                "scope": "turn",
+                                "strictAutoReview": false
+                            ]
+                        )
+                    },
+                    onDeny: {
+                        sendResponse(
+                            id: id,
+                            result: [
+                                "permissions": [:],
+                                "scope": "turn",
+                                "strictAutoReview": false
+                            ]
+                        )
+                    }
                 )
                 return true
 
             case "execCommandApproval":
-                onEvent(.status("Approving legacy command request..."))
-                sendResponse(id: id, result: ["decision": "approved_for_session"])
+                requestApproval(
+                    description: "Run a command (legacy request)",
+                    onApprove: { sendResponse(id: id, result: ["decision": "approved_for_session"]) },
+                    onDeny: { sendResponse(id: id, result: ["decision": "denied"]) }
+                )
                 return true
 
             case "applyPatchApproval":
-                onEvent(.status("Approving legacy patch request..."))
-                sendResponse(id: id, result: ["decision": "approved_for_session"])
+                requestApproval(
+                    description: "Apply a patch (legacy request)",
+                    onApprove: { sendResponse(id: id, result: ["decision": "approved_for_session"]) },
+                    onDeny: { sendResponse(id: id, result: ["decision": "denied"]) }
+                )
                 return true
 
             case "item/tool/requestUserInput":
@@ -197,7 +249,7 @@ final class CodexAppServerClient {
             }
         }
 
-        func finish(_ event: CodexSubmissionEvent) {
+        func finish(_ event: AgentEvent) {
             guard !completed else { return }
             completed = true
             onEvent(event)
@@ -206,10 +258,10 @@ final class CodexAppServerClient {
             stdinPipe.fileHandleForWriting.closeFile()
             process.terminate()
             activeProcess = nil
+            cancelAction = nil
         }
 
         func finishSuccessfulTurn() {
-            let id = threadId ?? "unknown"
             let trimmedFinal = finalMessage.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmedFinal.isEmpty, let lastTurnError {
                 finish(.failed(lastTurnError))
@@ -219,7 +271,11 @@ final class CodexAppServerClient {
             let message = trimmedFinal.isEmpty
                 ? "Codex completed the turn. Open Codex to review details."
                 : finalMessage
-            finish(.completed(threadId: id, finalMessage: message))
+            finish(.completed(sessionId: threadId, finalMessage: message))
+        }
+
+        cancelAction = {
+            finish(.failed("Stopped."))
         }
 
         stdoutPipe.fileHandleForReading.readabilityHandler = { handle in
@@ -277,9 +333,8 @@ final class CodexAppServerClient {
                        let thread = result["thread"] as? [String: Any],
                        let readyThreadId = thread["id"] as? String {
                         threadId = readyThreadId
-                        threadPath = thread["path"] as? String
                         if existingThreadId == nil {
-                            onEvent(.threadCreated(threadId: readyThreadId, path: threadPath))
+                            onEvent(.sessionStarted(id: readyThreadId))
                         } else {
                             onEvent(.status("Active thread resumed."))
                         }
@@ -290,7 +345,7 @@ final class CodexAppServerClient {
                     if let method = message["method"] as? String {
                         if let requestId = message["id"],
                            let params = message["params"] as? [String: Any],
-                           approveServerRequest(method: method, id: requestId, params: params) {
+                           handleServerRequest(method: method, id: requestId, params: params) {
                             continue
                         }
 
@@ -299,7 +354,7 @@ final class CodexAppServerClient {
                             if let params = message["params"] as? [String: Any],
                                let delta = params["delta"] as? String {
                                 finalMessage += delta
-                                onEvent(.agentDelta(delta))
+                                onEvent(.delta(delta))
                             }
 
                         case "item/completed":
@@ -311,7 +366,7 @@ final class CodexAppServerClient {
                                let text = item["text"] as? String {
                                 finalMessage = text
                                 if !text.isEmpty {
-                                    onEvent(.agentDelta(text))
+                                    onEvent(.delta(text))
                                 }
                             }
 
@@ -396,7 +451,7 @@ final class CodexAppServerClient {
                 "clientInfo": [
                     "name": "codex_sprite",
                     "title": "Codex Sprite",
-                    "version": "0.1.0"
+                    "version": "0.2.0"
                 ],
                 "capabilities": [
                     "experimentalApi": true,

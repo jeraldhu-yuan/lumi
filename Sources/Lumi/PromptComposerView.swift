@@ -15,7 +15,6 @@ final class PromptComposerView: NSView, NSTextViewDelegate {
     private var inputHeightConstraint: NSLayoutConstraint!
     private var attachments: [AgentAttachment] = []
     private var isSending = false
-    private var lastSubmittedRequest: AgentRequest?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -142,12 +141,10 @@ final class PromptComposerView: NSView, NSTextViewDelegate {
         guard !newAttachments.isEmpty else { return }
         let knownPaths = Set(attachments.map { $0.url.standardizedFileURL.path })
         attachments.append(contentsOf: newAttachments.filter { !knownPaths.contains($0.url.standardizedFileURL.path) })
-        lastSubmittedRequest = nil
         rebuildAttachmentChips()
     }
 
     func textDidChange(_ notification: Notification) {
-        lastSubmittedRequest = nil
         updatePlaceholderVisibility()
         updateInputHeight()
         onTextChange?(inputTextView.string)
@@ -170,18 +167,16 @@ final class PromptComposerView: NSView, NSTextViewDelegate {
 
     private func submit() {
         guard !isSending else { return }
-        let request = AgentRequest(prompt: inputTextView.string, attachments: attachments)
-        guard request != lastSubmittedRequest else { return }
-        lastSubmittedRequest = request
-        onSubmit?(request)
+        onSubmit?(AgentRequest(prompt: inputTextView.string, attachments: attachments))
     }
 
     @objc private func chooseAttachments() {
+        guard let window else { return }
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = true
         panel.canChooseFiles = true
         panel.canChooseDirectories = true
-        panel.beginSheetModal(for: window!) { [weak self] response in
+        panel.beginSheetModal(for: window) { [weak self] response in
             guard response == .OK else { return }
             self?.addAttachments(panel.urls.map(AgentAttachment.from(url:)))
         }
@@ -241,7 +236,6 @@ final class PromptComposerView: NSView, NSTextViewDelegate {
     @objc private func removeAttachment(_ sender: NSButton) {
         guard attachments.indices.contains(sender.tag) else { return }
         attachments.remove(at: sender.tag)
-        lastSubmittedRequest = nil
         rebuildAttachmentChips()
     }
 

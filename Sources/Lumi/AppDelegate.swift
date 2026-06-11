@@ -7,7 +7,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var backend: AgentBackend = BackendFactory.make(AppConfig.backendKind)
     private let sessionStore = MasterSessionStore()
     private var isSending = false
-    private var lastSubmittedRequest: AgentRequest?
     private var activeSessionId: String?
     private var messages: [ConversationMessage] = []
     private var activeAssistantMessageIndex: Int?
@@ -88,15 +87,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             prompt: trimmed.isEmpty ? "Inspect the attached items and summarize what is relevant before deciding the next action." : trimmed,
             attachments: request.attachments
         )
-        guard normalizedRequest != lastSubmittedRequest else {
-            promptController?.update(
-                status: "That request was already sent. Edit it before submitting again.",
-                isSending: false,
-                threadId: activeSessionId
-            )
-            return
-        }
-        lastSubmittedRequest = normalizedRequest
 
         let continuingSessionId = activeSessionId
         if continuingSessionId == nil {
@@ -125,9 +115,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 guard let self else { return }
 
                 switch event {
-                case .status:
+                case .status(let message):
                     self.spriteController?.setMood(.working)
-                    self.promptController?.update(status: "Working...", isSending: true, threadId: self.activeSessionId ?? continuingSessionId)
+                    let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
+                    self.promptController?.update(
+                        status: trimmedMessage.isEmpty ? "Working..." : trimmedMessage,
+                        isSending: true,
+                        threadId: self.activeSessionId ?? continuingSessionId
+                    )
 
                 case .sessionStarted(let sessionId):
                     self.activeSessionId = sessionId
@@ -223,7 +218,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         AppConfig.setBackendKind(kind)
         backend = BackendFactory.make(kind)
-        lastSubmittedRequest = nil
         activeSessionId = sessionStore.sessionID(for: kind, workspacePath: AppConfig.workspacePath)
         messages = []
         activeAssistantMessageIndex = nil
@@ -253,7 +247,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startNewSession() {
         guard !isSending else { return }
         sessionStore.clearSession(for: backend.kind, workspacePath: AppConfig.workspacePath)
-        lastSubmittedRequest = nil
         activeSessionId = nil
         messages = []
         activeAssistantMessageIndex = nil

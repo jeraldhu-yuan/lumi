@@ -12,6 +12,7 @@ final class ClaudeCodeBackend: AgentBackend {
 
     private let queue = DispatchQueue(label: "ClaudeCodeBackend")
     private var activeProcess: Process?
+    private var cancelRequested = false
 
     func submit(
         request: AgentRequest,
@@ -32,19 +33,23 @@ final class ClaudeCodeBackend: AgentBackend {
                 return
             }
 
+            self.cancelRequested = false
             self.run(
                 executable: executable,
                 request: request,
                 workspacePath: workspacePath,
                 existingSessionId: existingSessionId,
-                onEvent: onEvent
+                onEvent: onEvent,
+                allowSessionRecovery: true
             )
         }
     }
 
     func cancel() {
         queue.async { [weak self] in
-            self?.activeProcess?.terminate()
+            guard let self else { return }
+            self.cancelRequested = true
+            self.activeProcess?.terminate()
         }
     }
 
@@ -55,7 +60,8 @@ final class ClaudeCodeBackend: AgentBackend {
         request: AgentRequest,
         workspacePath: String,
         existingSessionId: String?,
-        onEvent: @escaping (AgentEvent) -> Void
+        onEvent: @escaping (AgentEvent) -> Void,
+        allowSessionRecovery: Bool
     ) {
         let process = Process()
         let stdoutPipe = Pipe()
@@ -91,6 +97,7 @@ final class ClaudeCodeBackend: AgentBackend {
         var sessionId = existingSessionId
         var streamedText = ""
         var completed = false
+        var sawInit = false
 
         func finish(_ event: AgentEvent) {
             guard !completed else { return }
@@ -104,6 +111,38 @@ final class ClaudeCodeBackend: AgentBackend {
             activeProcess = nil
         }
 
+        // A persisted session can disappear out from under us (cleaned up by
+        // the CLI, deleted by the user). When a resume dies before the stream
+        // even initializes, retry once on a fresh session instead of failing.
+        func failOrRecover(_ message: String) {
+            guard !completed else { return }
+
+            if !self.cancelRequested,
+               allowSessionRecovery,
+               !sawInit,
+               let existingSessionId, !existingSessionId.isEmpty {
+                completed = true
+                stdoutPipe.fileHandleForReading.readabilityHandler = nil
+                stderrPipe.fileHandleForReading.readabilityHandler = nil
+                if process.isRunning {
+                    process.terminate()
+                }
+                activeProcess = nil
+                onEvent(.status("Stored Claude Code session is unavailable. Starting fresh..."))
+                self.run(
+                    executable: executable,
+                    request: request,
+                    workspacePath: workspacePath,
+                    existingSessionId: nil,
+                    onEvent: onEvent,
+                    allowSessionRecovery: false
+                )
+                return
+            }
+
+            finish(.failed(self.cancelRequested ? "Stopped." : message))
+        }
+
         stdoutPipe.fileHandleForReading.readabilityHandler = { handle in
             let chunk = handle.availableData
             guard !chunk.isEmpty else { return }
@@ -114,6 +153,7 @@ final class ClaudeCodeBackend: AgentBackend {
 
                     switch event {
                     case .sessionStarted(let id):
+                        sawInit = true
                         sessionId = id
                         if existingSessionId == nil {
                             onEvent(.sessionStarted(id: id))
@@ -132,7 +172,7 @@ final class ClaudeCodeBackend: AgentBackend {
                         return
 
                     case .failure(let message):
-                        finish(.failed(message))
+                        failOrRecover(message)
                         return
                     }
                 }
@@ -152,7 +192,7 @@ final class ClaudeCodeBackend: AgentBackend {
                 guard !completed else { return }
                 let stderr = String(data: stderrBuffer, encoding: .utf8)?
                     .trimmingCharacters(in: .whitespacesAndNewlines)
-                finish(.failed(stderr?.isEmpty == false ? stderr! : "Claude Code exited before the turn completed."))
+                failOrRecover(stderr?.isEmpty == false ? stderr! : "Claude Code exited before the turn completed.")
             }
         }
 

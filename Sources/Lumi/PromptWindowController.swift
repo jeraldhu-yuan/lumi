@@ -295,35 +295,12 @@ final class PromptView: NSVisualEffectView, NSTextViewDelegate {
 
     private static func makeBackendMenu() -> NSMenu {
         let menu = NSMenu()
-
-        func addHeader(_ title: String) {
-            let item = NSMenuItem()
-            item.attributedTitle = NSAttributedString(
-                string: title,
-                attributes: [
-                    .font: NSFont.systemFont(ofSize: 9.5, weight: .semibold),
-                    .foregroundColor: NSColor.tertiaryLabelColor,
-                    .kern: 0.8
-                ]
-            )
-            item.isEnabled = false
-            menu.addItem(item)
-        }
-
-        func addBackend(_ kind: BackendKind) {
+        for kind in BackendKind.allCases {
             let item = NSMenuItem(title: kind.displayName, action: nil, keyEquivalent: "")
             item.representedObject = kind.rawValue
             item.toolTip = kind.selectorDetail
-            item.indentationLevel = 1
             menu.addItem(item)
         }
-
-        addHeader("AGENTS — RUN IN YOUR WORKSPACE")
-        BackendKind.allCases.filter(\.isAgent).forEach(addBackend)
-        menu.addItem(.separator())
-        addHeader("CHAT")
-        BackendKind.allCases.filter { !$0.isAgent }.forEach(addBackend)
-
         return menu
     }
 

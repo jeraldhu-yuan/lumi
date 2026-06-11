@@ -23,23 +23,23 @@ protocol AgentBackend: AnyObject {
 
 Backends emit a small event vocabulary (`AgentEvent`): `status`, `sessionStarted`, `delta`, `approvalRequest`, `completed`, `failed`. `AppDelegate` is the only consumer — it maps events to sprite moods and prompt-window updates on the main actor.
 
-`BackendCapabilities` flags (`usesWorkspace`, `supportsApprovals`, `canOpenCompanionApp`) drive what the UI shows, so chat backends don't render a workspace path and agent backends get approval dialogs.
+`BackendCapabilities` flags (`usesWorkspace`, `supportsApprovals`, `canOpenCompanionApp`) drive what the UI shows — e.g. only Codex gets the "Open Codex Desktop" button.
 
-### The four backends
+### The backends
 
 | Backend | Transport | Sessions |
 |---|---|---|
 | `CodexBackend` | `codex app-server --stdio`, JSON-RPC per turn | `thread/start` / `thread/resume` |
 | `ClaudeCodeBackend` | `claude -p --output-format stream-json` subprocess per turn | `--resume <session-id>` |
-| `AnthropicBackend` | HTTPS SSE to `api.anthropic.com/v1/messages` | in-memory message history |
-| `OpenAICompatibleBackend` | HTTPS SSE to any `chat/completions` | in-memory message history |
+
+Both are agents: they get a workspace and emit `approvalRequest` events when they want to act on it. Lumi deliberately has no chat-only backends — an assistant without hands is a different product.
 
 ### Parsing is pure and tested
 
 Wire-format handling is deliberately separated from I/O:
 
 - **`LineBuffer`** — turns arbitrary stream chunks into complete newline-delimited lines (handles partial lines and multi-byte UTF-8 splits).
-- **`StreamParsers.swift`** — `ClaudeCodeStreamParser`, `AnthropicSSEParser`, `OpenAIChunkParser`: one line in, one typed event out. No state, no sockets.
+- **`StreamParsers.swift`** — `ClaudeCodeStreamParser`: one stream-json line in, one typed event out. No state, no I/O.
 
 This is what `script/test.sh` exercises. If a protocol changes upstream, the fix and its regression test both land in one file.
 
@@ -58,6 +58,5 @@ The UI picks it up automatically — the picker iterates `BackendKind.allCases`.
 
 ## Threading model
 
-- Subprocess backends (`Codex`, `ClaudeCode`) serialize all state on a private `DispatchQueue`; pipe readability handlers hop onto it.
-- HTTP backends run one `Task` per turn and allow a single in-flight request.
+- Backends serialize all state on a private `DispatchQueue`; pipe readability handlers hop onto it.
 - `AgentEvent` callbacks may arrive on any thread; `AppDelegate` re-dispatches to the main actor before touching UI.

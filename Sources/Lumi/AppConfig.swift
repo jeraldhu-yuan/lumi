@@ -86,40 +86,5 @@ enum AppConfig {
         env("LUMI_CLAUDE_PERMISSION_MODE") ?? "acceptEdits"
     }
 
-    // MARK: - Anthropic API
-
-    static var anthropicAPIKey: String? {
-        env("ANTHROPIC_API_KEY") ?? UserDefaults.standard.string(forKey: "LumiAnthropicAPIKey")
-    }
-
-    static var anthropicModel: String {
-        env("LUMI_ANTHROPIC_MODEL") ?? "claude-opus-4-8"
-    }
-
-    // MARK: - OpenAI-compatible endpoint
-
-    static var openAIBaseURL: String {
-        env("LUMI_OPENAI_BASE_URL")
-            ?? UserDefaults.standard.string(forKey: "LumiOpenAIBaseURL")
-            ?? "http://localhost:11434/v1"
-    }
-
-    static var openAIModel: String {
-        env("LUMI_OPENAI_MODEL")
-            ?? UserDefaults.standard.string(forKey: "LumiOpenAIModel")
-            ?? "llama3.2"
-    }
-
-    static var openAIAPIKey: String? {
-        env("LUMI_OPENAI_API_KEY")
-    }
-
-    // MARK: - Shared chat settings
-
-    static var chatSystemPrompt: String? {
-        env("LUMI_SYSTEM_PROMPT")
-            ?? "You are Lumi, a friendly assistant living in a small desktop sprite. Keep responses concise and conversational."
-    }
-
     static let bundleIdentifier = "com.github.jj9276489.lumi"
 }

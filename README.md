@@ -6,7 +6,7 @@
 
 **Lumi is a tiny fairy who lives on your desktop and talks to your AI.**
 
-She flies, naps, gets curious, and watches your cursor. Click her, type a request, and she relays it to the backend of your choice — Codex, Claude Code, the Claude API, or any local model — then streams the answer back while she works.
+She flies, naps, gets curious, and watches your cursor. Click her, type a request, and she hands it to the coding agent of your choice — Codex or Claude Code — which works in your workspace and streams the answer back while she emotes along.
 
 https://github.com/user-attachments/assets/ee137b4e-1128-4d24-b2ef-56fb5e3fd508
 
@@ -22,16 +22,12 @@ Lumi appears on your desktop. Click her to open the prompt window, pick a backen
 
 ## Backends
 
-| Backend | Kind | Needs | Notes |
-|---|---|---|---|
-| **Codex** (default) | Agent with workspace | Codex desktop app or CLI | Experimental `codex app-server` protocol |
-| **Claude Code** | Agent with workspace | `claude` CLI installed and logged in | Headless `stream-json` mode; sessions resume across follow-ups |
-| **Claude** | Chat | `ANTHROPIC_API_KEY` | Direct Claude API streaming (`claude-opus-4-8` by default) |
-| **Local Model** | Chat | Any OpenAI-compatible server | Works out of the box with Ollama at `localhost:11434` |
+| Backend | Needs | Notes |
+|---|---|---|
+| **Codex** (default) | Codex desktop app or CLI | Experimental `codex app-server` protocol |
+| **Claude Code** | `claude` CLI installed and logged in | Headless `stream-json` mode; sessions resume across follow-ups |
 
-Agent backends get a workspace and can read/write files and run commands. Chat backends are pure conversation — no workspace, no approvals, no install beyond a key or a local server.
-
-The picker in the prompt window persists your choice. Power users can pin it with `LUMI_BACKEND=codex|claude-code|anthropic|openai`.
+Both are full agents: they run in your workspace, read and write files, and execute commands (gated by approvals below). Pick one from the dropdown in the prompt window (persisted), or pin it with `LUMI_BACKEND=codex|claude-code`.
 
 ## Approvals
 
@@ -45,9 +41,8 @@ All settings are environment variables, set before launch:
 
 ```bash
 # Shared
-LUMI_BACKEND="codex"                 # codex | claude-code | anthropic | openai
-LUMI_WORKSPACE="$HOME/projects"      # workspace for agent backends
-LUMI_SYSTEM_PROMPT="..."             # personality for chat backends
+LUMI_BACKEND="codex"                 # codex | claude-code
+LUMI_WORKSPACE="$HOME/projects"      # the agent's working directory
 
 # Codex
 LUMI_CODEX_PATH="/Applications/Codex.app/Contents/Resources/codex"
@@ -58,15 +53,6 @@ LUMI_CODEX_AUTO_APPROVE="1"          # skip approval dialogs
 # Claude Code
 LUMI_CLAUDE_PATH="/opt/homebrew/bin/claude"
 LUMI_CLAUDE_PERMISSION_MODE="acceptEdits"
-
-# Claude API
-ANTHROPIC_API_KEY="sk-ant-..."
-LUMI_ANTHROPIC_MODEL="claude-opus-4-8"
-
-# OpenAI-compatible
-LUMI_OPENAI_BASE_URL="http://localhost:11434/v1"
-LUMI_OPENAI_MODEL="llama3.2"
-LUMI_OPENAI_API_KEY=""               # only for hosted endpoints
 ```
 
 ## Scripts
@@ -90,9 +76,7 @@ PromptWindowController      HUD prompt window
 AppDelegate                 glue: events -> moods -> UI
 AgentBackend (protocol)     submit / cancel / reset + capability flags
  ├─ CodexBackend            codex app-server (JSON-RPC over stdio)
- ├─ ClaudeCodeBackend       claude -p --output-format stream-json
- ├─ AnthropicBackend        Claude API (SSE)
- └─ OpenAICompatibleBackend any chat/completions endpoint (SSE)
+ └─ ClaudeCodeBackend       claude -p --output-format stream-json
 StreamParsers / LineBuffer  pure wire-format parsing (unit tested)
 ```
 

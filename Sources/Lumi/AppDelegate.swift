@@ -63,9 +63,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         promptController.configure(for: backend)
         spriteController.show()
         promptController.update(
-            status: backend.capabilities.usesWorkspace
-                ? "Ready in \(URL(fileURLWithPath: AppConfig.workspacePath).lastPathComponent)"
-                : "Ready to chat with \(backendName).",
+            status: "Ready in \(URL(fileURLWithPath: AppConfig.workspacePath).lastPathComponent)",
             isSending: false,
             threadId: nil
         )

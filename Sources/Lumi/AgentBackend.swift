@@ -18,22 +18,11 @@ struct BackendCapabilities {
 enum BackendKind: String, CaseIterable {
     case codex
     case claudeCode = "claude-code"
-    case anthropic
-    case openAICompatible = "openai"
 
     var displayName: String {
         switch self {
         case .codex: return "Codex"
         case .claudeCode: return "Claude Code"
-        case .anthropic: return "Claude"
-        case .openAICompatible: return "Local Model"
-        }
-    }
-
-    var isAgent: Bool {
-        switch self {
-        case .codex, .claudeCode: return true
-        case .anthropic, .openAICompatible: return false
         }
     }
 
@@ -41,8 +30,6 @@ enum BackendKind: String, CaseIterable {
         switch self {
         case .codex: return "Codex app-server agent"
         case .claudeCode: return "Claude Code CLI agent"
-        case .anthropic: return "Claude API chat"
-        case .openAICompatible: return "Ollama or any OpenAI-compatible server"
         }
     }
 }

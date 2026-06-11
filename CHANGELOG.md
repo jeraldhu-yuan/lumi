@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.0 — 2026-06-10
+
+### Changed
+- **Agents only.** Removed the Claude API and OpenAI-compatible chat backends — Lumi connects exclusively to coding agents (Codex, Claude Code) that can act in your workspace. `ANTHROPIC_API_KEY` / `LUMI_OPENAI_*` / `LUMI_SYSTEM_PROMPT` settings are gone.
+- Prompt window collapses into a compact ask bar when idle; the transcript floats on the window blur and appears only during a conversation.
+
+### Added
+- Seven hand-drawn expression sprites (pleading, talking x3, dizzy, celebrate, listening) wired into approvals, streaming, failure, success, and listening states, plus the `tools/process_expressions.swift` pipeline that produced them.
+
+### Removed
+- Procedural pixel-person fallback renderer (a leftover placeholder character).
+
 ## 0.3.0 — 2026-06-10
 
 **The Lumi release.** Codex Desktop Sprite is now Lumi, a backend-agnostic desktop AI companion.

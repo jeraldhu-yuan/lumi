@@ -5,8 +5,6 @@ enum BackendFactory {
         switch kind {
         case .codex: return CodexBackend()
         case .claudeCode: return ClaudeCodeBackend()
-        case .anthropic: return AnthropicBackend()
-        case .openAICompatible: return OpenAICompatibleBackend()
         }
     }
 }

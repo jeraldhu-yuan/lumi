@@ -58,53 +58,12 @@ do {
     expect(ClaudeCodeStreamParser.parse(line: data(#"{"type":"assistant"}"#)) == nil, "claude-code: unrelated message types are ignored")
 }
 
-// MARK: - AnthropicSSEParser
-
-do {
-    let delta = #"data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hello"}}"#
-    expect(AnthropicSSEParser.parse(line: delta) == .textDelta("Hello"), "anthropic: text_delta yields textDelta")
-
-    let noSpace = #"data:{"type":"content_block_delta","delta":{"type":"text_delta","text":"x"}}"#
-    expect(AnthropicSSEParser.parse(line: noSpace) == .textDelta("x"), "anthropic: data: framing without space is tolerated")
-
-    expect(AnthropicSSEParser.parse(line: "event: content_block_delta") == nil, "anthropic: event lines are ignored")
-    expect(AnthropicSSEParser.parse(line: #"data: {"type":"message_stop"}"#) == .messageStop, "anthropic: message_stop terminates")
-
-    let thinking = #"data: {"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":"..."}}"#
-    expect(AnthropicSSEParser.parse(line: thinking) == nil, "anthropic: thinking deltas are ignored")
-
-    let error = #"data: {"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}"#
-    expect(AnthropicSSEParser.parse(line: error) == .error("Overloaded"), "anthropic: stream errors surface the message")
-
-    let body = #"{"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"}}"#
-    expect(AnthropicSSEParser.errorMessage(fromBody: body) == "invalid x-api-key", "anthropic: HTTP error body message extraction")
-    expect(AnthropicSSEParser.errorMessage(fromBody: "<html>502</html>") == nil, "anthropic: non-JSON error body returns nil")
-}
-
-// MARK: - OpenAIChunkParser
-
-do {
-    let delta = #"data: {"id":"c1","choices":[{"delta":{"content":"Hey"},"index":0}]}"#
-    expect(OpenAIChunkParser.parse(line: delta) == .textDelta("Hey"), "openai: content delta yields textDelta")
-
-    expect(OpenAIChunkParser.parse(line: "data: [DONE]") == .done, "openai: [DONE] terminates")
-    expect(OpenAIChunkParser.parse(line: "data:[DONE]") == .done, "openai: [DONE] without space terminates")
-
-    let roleOnly = #"data: {"choices":[{"delta":{"role":"assistant"},"index":0}]}"#
-    expect(OpenAIChunkParser.parse(line: roleOnly) == nil, "openai: role-only chunk is ignored")
-
-    let emptyContent = #"data: {"choices":[{"delta":{"content":""},"index":0}]}"#
-    expect(OpenAIChunkParser.parse(line: emptyContent) == nil, "openai: empty content is ignored")
-
-    expect(OpenAIChunkParser.parse(line: ": ping") == nil, "openai: SSE comments are ignored")
-}
-
 // MARK: - BackendKind
 
 do {
     expect(BackendKind(rawValue: "claude-code") == .claudeCode, "backend kinds: claude-code raw value round-trips")
-    expect(BackendKind.allCases.count == 4, "backend kinds: four backends registered")
-    expect(Set(BackendKind.allCases.map(\.displayName)).count == 4, "backend kinds: display names are unique")
+    expect(BackendKind.allCases.count == 2, "backend kinds: two agent backends registered")
+    expect(Set(BackendKind.allCases.map(\.displayName)).count == 2, "backend kinds: display names are unique")
 }
 
 // MARK: - Summary

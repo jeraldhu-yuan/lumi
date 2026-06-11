@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.1 — 2026-06-10
+
+### Added
+- Shared assistant persona (`LUMI_PERSONA`): the assistant identifies as Lumi regardless of the active engine. Delivered via `--append-system-prompt` for Claude Code and a first-turn preamble for Codex.
+- Lingering click greeting: hearts float up after release, the greeting sequence plays out fully before cursor-gaze tracking takes over.
+
+### Fixed
+- Character size and baseline now normalized across sprite sheets at draw time; sitting, sleeping, and expression frames previously rendered up to 16% larger and on a different ground line than standing frames.
+- Clicking the sprite while it sat no longer plays the wake-from-sleep eye-rub sequence; it greets from the seat, stands, and waves.
+- Transcript labels the assistant's turns "Lumi" instead of the backend name.
+
 ## 0.4.0 — 2026-06-10
 
 ### Changed

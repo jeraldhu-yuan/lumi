@@ -1,32 +1,35 @@
 # Contributing to Lumi
 
-Thanks for helping make the desktop a little more alive.
+Thank you for your interest in contributing.
 
-## Setup
+## Development Setup
 
 ```bash
 git clone https://github.com/jeraldhu-yuan/lumi.git
 cd lumi
-./script/build_and_run.sh   # build + launch
+./script/build_and_run.sh   # build and launch
 ./script/test.sh            # run the test suite
 ```
 
-Requirements: macOS 14+, Xcode Command Line Tools. No package dependencies.
+Requirements: macOS 14+ and the Xcode Command Line Tools. The project has no third-party dependencies.
 
-## Ground rules
+## Guidelines
 
-- **Tests must pass** — `./script/test.sh` runs in CI on every push and PR.
-- **Wire formats are parsed in `StreamParsers.swift`**, never inline in a backend. That keeps protocol handling unit-testable; add fixtures for any new or changed message shape in `Tests/TestRunner/main.swift`.
-- **Backends stay UI-free.** A backend talks through `AgentEvent`s; if you need new UI behavior, add an event or a capability flag instead of importing AppKit into a backend.
-- **No new dependencies** without discussion — the zero-dependency build (SwiftPM *and* bare `swiftc`) is a feature.
+- **Tests must pass.** `./script/test.sh` runs in CI on every push and pull request.
+- **Wire-format parsing belongs in `StreamParsers.swift`**, not inline in a backend. This keeps protocol handling unit-testable; add fixtures to `Tests/TestRunner/main.swift` for any new or changed message shape.
+- **Backends must remain UI-free.** A backend communicates exclusively through `AgentEvent` values. If new UI behavior is needed, add an event case or a capability flag rather than importing AppKit into a backend.
+- **No new dependencies** without prior discussion. The zero-dependency build (SwiftPM and direct `swiftc`) is a deliberate property of the project.
 
-## Good first contributions
+## Suggested Contributions
 
-- A new backend (Gemini CLI? a generic ACP adapter?) — see "Adding a backend" in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-- Interactive input support for Codex (`item/tool/requestUserInput`).
-- New sprite sheets and animation states.
-- A real screen-recorded demo video.
+- Additional agent backends — see "Adding a backend" in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+- Interactive input support for the Codex backend (`item/tool/requestUserInput`).
+- Additional sprite sheets and animation states.
 
-## Reporting bugs
+## Reporting Issues
 
-Open an issue with macOS version, the backend you were using, and the output of `/usr/bin/log stream --predicate 'process == "Lumi"'` if relevant.
+Please include the macOS version, the active backend, reproduction steps, and — where relevant — output from:
+
+```bash
+/usr/bin/log stream --predicate 'process == "Lumi"'
+```

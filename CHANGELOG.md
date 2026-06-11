@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.1 — 2026-06-11
+
+### Fixed
+- Removed the duplicate-submit guard that silently swallowed legitimate repeated requests after a turn completed.
+- Status events surface their actual text again (session recovery notices, auto-approve announcements, mid-turn errors) instead of a generic "Working...".
+- Claude Code recovers from stale persisted sessions by retrying once on a fresh session; cancellation reports "Stopped." instead of a process-exit error.
+- Transcript rendering caches per-message Markdown (only the streaming message re-parses) and no longer force-scrolls while reading earlier messages.
+- Replaced a force-unwrap in the attachment picker; added File > Close Window (Cmd-W).
+
+### Added
+- Tag-triggered release workflow publishing a zipped `Lumi.app` to GitHub Releases.
+- Live verification (`codex app-server`) that `developerInstructions`, `personality`, and `additionalContext` are accepted by the current protocol.
+
 ## 0.5.0 - 2026-06-11
 
 ### Added

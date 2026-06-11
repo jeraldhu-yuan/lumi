@@ -1,0 +1,35 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run tests
+        run: ./script/test.sh
+
+      - name: Build app bundle
+        run: ./script/build_and_run.sh --build
+
+      - name: Package
+        run: ditto -c -k --sequesterRsrc --keepParent dist/Lumi.app "dist/Lumi-${GITHUB_REF_NAME}.zip"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Lumi-*.zip
+          generate_release_notes: true
+          body: |
+            Unsigned development build. After unzipping, remove the quarantine attribute before first launch:
+
+            ```bash
+            xattr -dr com.apple.quarantine Lumi.app
+            ```

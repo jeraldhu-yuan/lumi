@@ -16,14 +16,24 @@ struct SpriteSheet {
     let image: NSImage?
     let columns: Int
     let frameSize: Int
+    // The sheets were generated in separate batches and the character isn't
+    // the same size or on the same baseline in each. contentScale and
+    // bottomGap (measured opaque pixels below her feet at 256px) let the
+    // renderer normalize every sheet to the standing sheet's proportions.
+    let contentScale: CGFloat
+    let bottomGap: CGFloat
 
     init(
         relativePath: [String] = ["Assets", "ChibiAssistant", "sprite-sheet.png"],
         columns: Int = 4,
-        frameSize: Int = 256
+        frameSize: Int = 256,
+        contentScale: CGFloat = 1.0,
+        bottomGap: CGFloat = 26
     ) {
         self.columns = columns
         self.frameSize = frameSize
+        self.contentScale = contentScale
+        self.bottomGap = bottomGap
 
         let resourceURL = relativePath.reduce(Bundle.main.resourceURL) { url, component in
             url?.appendingPathComponent(component)
@@ -381,12 +391,14 @@ final class SpriteView: NSView {
     private static let expressionFrameOffset = 7_000
 
     private let onClick: () -> Void
-    private let spriteSheet = SpriteSheet()
+    private let spriteSheet = SpriteSheet(contentScale: 0.92, bottomGap: 17)
     private let supplementalSpriteSheet = SpriteSheet(
-        relativePath: ["Assets", "ChibiAssistant", "generated", "supplemental-sheet.png"]
+        relativePath: ["Assets", "ChibiAssistant", "generated", "supplemental-sheet.png"],
+        bottomGap: 25
     )
     private let extraSpriteSheet = SpriteSheet(
-        relativePath: ["Assets", "ChibiAssistant", "generated", "extra-sheet.png"]
+        relativePath: ["Assets", "ChibiAssistant", "generated", "extra-sheet.png"],
+        bottomGap: 24
     )
     private let standingSpriteSheet = SpriteSheet(
         relativePath: ["Assets", "ChibiAssistant", "generated", "standing-orientations", "standing-orientations-sheet.png"],
@@ -394,19 +406,27 @@ final class SpriteView: NSView {
     )
     private let sittingSpriteSheet = SpriteSheet(
         relativePath: ["Assets", "ChibiAssistant", "generated", "sitting-orientations", "sitting-orientations-sheet.png"],
-        columns: 5
+        columns: 5,
+        contentScale: 0.88,
+        bottomGap: 21
     )
     private let sleepWakeSpriteSheet = SpriteSheet(
         relativePath: ["Assets", "ChibiAssistant", "generated", "sleep-wake", "sleep-wake-sheet.png"],
-        columns: 6
+        columns: 6,
+        contentScale: 0.88,
+        bottomGap: 21
     )
     private let actionSpriteSheet = SpriteSheet(
         relativePath: ["Assets", "ChibiAssistant", "generated", "action-sprites", "action-sprites-sheet.png"],
-        columns: 6
+        columns: 6,
+        contentScale: 0.94,
+        bottomGap: 20
     )
     private let expressionSpriteSheet = SpriteSheet(
         relativePath: ["Assets", "ChibiAssistant", "generated", "expressions", "expressions-sheet.png"],
-        columns: 7
+        columns: 7,
+        contentScale: 0.86,
+        bottomGap: 4
     )
     private var animationTimer: Timer?
     private var frameTick = 0
@@ -919,7 +939,20 @@ final class SpriteView: NSView {
             height: sourceSize
         )
 
-        let drawRect = spriteDrawRect
+        var drawRect = spriteDrawRect
+        if selectedSheet.contentScale != 1 || selectedSheet.bottomGap != 26 {
+            let unit = drawRect.height / 256
+            let scale = selectedSheet.contentScale
+            let width = drawRect.width * scale
+            let height = drawRect.height * scale
+            let feetOffset = (26 - selectedSheet.bottomGap * scale) * unit
+            drawRect = NSRect(
+                x: drawRect.midX - width / 2,
+                y: drawRect.minY + feetOffset,
+                width: width,
+                height: height
+            )
+        }
         drawSpriteShadow(under: drawRect)
 
         NSGraphicsContext.saveGraphicsState()
@@ -1194,11 +1227,8 @@ final class SpriteView: NSView {
         }
 
         if greetingWasFromRest {
-            if elapsed >= 76 {
+            if elapsed >= 80 {
                 return standing(direction.standingFrame)
-            }
-            if elapsed >= 26 && elapsed < 38 {
-                return sitting(direction.sittingFrame)
             }
             return nil
         }
@@ -1267,19 +1297,19 @@ final class SpriteView: NSView {
     }
 
     private func restWakeFrameIndex(elapsed: Int) -> Int {
+        // She was sitting, not asleep — notice, greet from the seat, stand
+        // up, then wave. No eye-rubbing.
         switch elapsed {
-        case 0..<14:
-            return sleepWake(.wakeSleepySit)
-        case 14..<26:
-            return sleepWake(.wakeRubEyes)
-        case 26..<38:
+        case 0..<10:
             return sitting(.frontBlink)
-        case 38..<54:
+        case 10..<28:
             return sleepWake(.wakeHelloSit)
-        case 54..<66:
+        case 28..<42:
             return sleepWake(.wakeStandingReady)
-        case 66..<76:
+        case 42..<60:
             return action(.happyWave)
+        case 60..<74:
+            return expression(.celebrate)
         default:
             return standing(.frontNeutral)
         }

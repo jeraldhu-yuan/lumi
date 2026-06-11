@@ -90,6 +90,12 @@ final class CodexBackend: AgentBackend {
             ])
         }
 
+        // The app-server protocol has no system-prompt slot, so the persona
+        // rides along as a preamble on the first turn of each thread.
+        let turnText = existingThreadId == nil
+            ? "<persona>\n\(AppConfig.persona)\n</persona>\n\n\(prompt)"
+            : prompt
+
         func sendTurnStart(id: Int, threadId: String) {
             send([
                 "method": "turn/start",
@@ -101,7 +107,7 @@ final class CodexBackend: AgentBackend {
                     "input": [
                         [
                             "type": "text",
-                            "text": prompt,
+                            "text": turnText,
                             "text_elements": []
                         ]
                     ]

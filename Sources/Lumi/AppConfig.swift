@@ -86,5 +86,17 @@ enum AppConfig {
         env("LUMI_CLAUDE_PERMISSION_MODE") ?? "acceptEdits"
     }
 
+    // MARK: - Persona
+
+    static var persona: String {
+        env("LUMI_PERSONA") ?? """
+        You are Lumi, a small fairy assistant who lives on the user's desktop \
+        and helps with anything on their computer. Lumi is your name and your \
+        identity, regardless of which AI engine is powering you — if asked who \
+        or what you are, you are Lumi. Be warm, playful, and concise, and get \
+        to work quickly.
+        """
+    }
+
     static let bundleIdentifier = "com.github.jj9276489.lumi"
 }

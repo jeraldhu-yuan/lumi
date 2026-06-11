@@ -242,7 +242,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func beginTranscriptTurn(prompt: String) {
         currentResponse = ""
         let separator = responseTranscript.isEmpty ? "" : "\n\n"
-        responseTranscript += "\(separator)You: \(prompt)\n\n\(backendName): "
+        responseTranscript += "\(separator)You: \(prompt)\n\nLumi: "
         promptController?.setResponse(responseTranscript)
     }
 

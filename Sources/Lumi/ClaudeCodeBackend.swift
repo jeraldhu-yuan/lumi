@@ -64,7 +64,8 @@ final class ClaudeCodeBackend: AgentBackend {
             "--output-format", "stream-json",
             "--verbose",
             "--include-partial-messages",
-            "--permission-mode", AppConfig.claudePermissionMode
+            "--permission-mode", AppConfig.claudePermissionMode,
+            "--append-system-prompt", AppConfig.persona
         ]
         if let existingSessionId, !existingSessionId.isEmpty {
             arguments += ["--resume", existingSessionId]

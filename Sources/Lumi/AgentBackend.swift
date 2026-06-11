@@ -13,6 +13,8 @@ struct BackendCapabilities {
     let usesWorkspace: Bool
     let supportsApprovals: Bool
     let canOpenCompanionApp: Bool
+    let supervisorSummary: String
+    let nativeFeatures: [String]
 }
 
 enum BackendKind: String, CaseIterable {
@@ -39,7 +41,7 @@ protocol AgentBackend: AnyObject {
     var capabilities: BackendCapabilities { get }
 
     func submit(
-        prompt: String,
+        request: AgentRequest,
         workspacePath: String,
         existingSessionId: String?,
         onEvent: @escaping (AgentEvent) -> Void

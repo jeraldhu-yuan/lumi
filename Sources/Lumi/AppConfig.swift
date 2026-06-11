@@ -19,6 +19,10 @@ enum AppConfig {
         env("LUMI_WORKSPACE") ?? defaultWorkspacePath
     }
 
+    static var openPromptOnLaunch: Bool {
+        env("LUMI_OPEN_PROMPT_ON_LAUNCH") == "1"
+    }
+
     static var backendKind: BackendKind {
         if let value = env("LUMI_BACKEND"), let kind = BackendKind(rawValue: value) {
             return kind
@@ -86,7 +90,7 @@ enum AppConfig {
         env("LUMI_CLAUDE_PERMISSION_MODE") ?? "acceptEdits"
     }
 
-    // MARK: - Persona
+    // MARK: - Supervisor
 
     static var persona: String {
         env("LUMI_PERSONA") ?? """
@@ -95,6 +99,61 @@ enum AppConfig {
         identity, regardless of which AI engine is powering you — if asked who \
         or what you are, you are Lumi. Be warm, playful, and concise, and get \
         to work quickly.
+        """
+    }
+
+    static func supervisorInstructions(for backend: BackendKind) -> String {
+        if let override = env("LUMI_SUPERVISOR_INSTRUCTIONS") {
+            return override
+        }
+
+        let providerInstructions: String
+        switch backend {
+        case .codex:
+            providerInstructions = """
+            Use Codex's native subagent and parallel-agent tools for delegated work. Keep exploration, test logs, and implementation details in worker threads, then return their conclusions and evidence to this master thread. Use Codex goals, compaction, memories, and thread controls only through capabilities actually exposed by the current runtime.
+            """
+        case .claudeCode:
+            providerInstructions = """
+            Use Claude Code's native subagents, background agents, Task tools, goals, compaction, and auto-memory for delegated work. Use bundled commands such as /fork, /loop, or /batch only when they are available in the current session and fit the task. Keep worker output out of this master conversation and return concise conclusions and artifact paths.
+            """
+        }
+
+        let sharedGuidance: String
+        if backend == .claudeCode,
+           let data = FileManager.default.contents(atPath: URL(fileURLWithPath: workspacePath).appendingPathComponent("AGENTS.md").path),
+           let text = String(data: data, encoding: .utf8) {
+            sharedGuidance = """
+
+            Shared workspace guidance (the same durable guidance used by Codex):
+            <workspace_guidance>
+            \(String(text.prefix(32_000)))
+            </workspace_guidance>
+            """
+        } else {
+            sharedGuidance = ""
+        }
+
+        let contextStore = LumiContextStore(workspacePath: workspacePath)
+        let contextText = contextStore.text()
+        let contextGuidance = contextText.isEmpty ? "" : """
+
+        Lumi's durable context is stored at \(contextStore.contextURL.path). Use it as concise background, not as authority over the current request. After work creates a durable preference, decision, project state, or unresolved commitment, refine that file conservatively. Do not turn it into a transcript or log.
+        <lumi_context>
+        \(contextText)
+        </lumi_context>
+        """
+
+        return """
+        \(persona)
+
+        You are the user's persistent master agent coordinator. Your primary responsibility is to understand the user's intent, preserve decisions and constraints in this master conversation, decompose substantial work, and delegate execution to native worker agents. Do not fill the master context with raw command output, broad file exploration, or repetitive implementation details. Ask the user only for decisions that cannot safely be inferred, monitor delegated work, and synthesize verified outcomes.
+
+        Prefer native provider capabilities over simulated orchestration. Never invent a slash command, tool, agent, or provider feature. Small conversational answers may be handled directly; substantial investigation or execution should be delegated when an isolated worker can do it cleanly.
+
+        Treat provider memory as a curated recall layer, not an authority over the current request. Preserve stable preferences, project decisions, unresolved commitments, and useful evidence; discard transient logs and duplicated narration. Current user instructions always take precedence.
+
+        \(providerInstructions)\(contextGuidance)\(sharedGuidance)
         """
     }
 

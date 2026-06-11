@@ -309,7 +309,7 @@ final class SpriteWindowController {
     let window: NSPanel
     private let spriteView: SpriteView
 
-    init(onClick: @escaping () -> Void) {
+    init(onClick: @escaping () -> Void, onAttachmentsDropped: @escaping ([AgentAttachment]) -> Void) {
         let visibleFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         let size = NSSize(width: 128, height: 128)
         let origin = NSPoint(
@@ -331,7 +331,11 @@ final class SpriteWindowController {
         window.isReleasedWhenClosed = false
         window.hidesOnDeactivate = false
 
-        spriteView = SpriteView(frame: NSRect(origin: .zero, size: size), onClick: onClick)
+        spriteView = SpriteView(
+            frame: NSRect(origin: .zero, size: size),
+            onClick: onClick,
+            onAttachmentsDropped: onAttachmentsDropped
+        )
         window.contentView = spriteView
     }
 
@@ -391,6 +395,7 @@ final class SpriteView: NSView {
     private static let expressionFrameOffset = 7_000
 
     private let onClick: () -> Void
+    private let onAttachmentsDropped: ([AgentAttachment]) -> Void
     private let spriteSheet = SpriteSheet(contentScale: 0.92, bottomGap: 17)
     private let supplementalSpriteSheet = SpriteSheet(
         relativePath: ["Assets", "ChibiAssistant", "generated", "supplemental-sheet.png"],
@@ -459,13 +464,20 @@ final class SpriteView: NSView {
     private var proximityTicks = 0
     private var cursorGazeDirection: GazeDirection?
     private var queuedPromptMood: SpriteMood?
+    private var isDropTarget = false
 
-    init(frame frameRect: NSRect, onClick: @escaping () -> Void) {
+    init(
+        frame frameRect: NSRect,
+        onClick: @escaping () -> Void,
+        onAttachmentsDropped: @escaping ([AgentAttachment]) -> Void
+    ) {
         self.onClick = onClick
+        self.onAttachmentsDropped = onAttachmentsDropped
         super.init(frame: frameRect)
         wantsLayer = true
         layer?.masksToBounds = false
-        toolTip = "Ask Codex"
+        toolTip = "Ask Lumi or drop files"
+        registerForDraggedTypes([.fileURL])
     }
 
     required init?(coder: NSCoder) {
@@ -476,6 +488,33 @@ final class SpriteView: NSView {
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
         true
+    }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        guard sender.draggingPasteboard.canReadObject(
+            forClasses: [NSURL.self],
+            options: [.urlReadingFileURLsOnly: true]
+        ) else { return [] }
+        isDropTarget = true
+        needsDisplay = true
+        return .copy
+    }
+
+    override func draggingExited(_ sender: NSDraggingInfo?) {
+        isDropTarget = false
+        needsDisplay = true
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        defer {
+            isDropTarget = false
+            needsDisplay = true
+        }
+        let options: [NSPasteboard.ReadingOptionKey: Any] = [.urlReadingFileURLsOnly: true]
+        guard let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: options) as? [URL],
+              !urls.isEmpty else { return false }
+        onAttachmentsDropped(urls.map(AgentAttachment.from(url:)))
+        return true
     }
 
     func start() {
@@ -873,6 +912,17 @@ final class SpriteView: NSView {
         NSGraphicsContext.current?.shouldAntialias = false
 
         _ = drawSpriteSheetFrame()
+
+        if isDropTarget {
+            NSGraphicsContext.current?.shouldAntialias = true
+            let glowRect = bounds.insetBy(dx: 8, dy: 8)
+            NSColor.controlAccentColor.withAlphaComponent(0.24).setFill()
+            NSBezierPath(ovalIn: glowRect).fill()
+            NSColor.controlAccentColor.withAlphaComponent(0.9).setStroke()
+            let ring = NSBezierPath(ovalIn: glowRect.insetBy(dx: 3, dy: 3))
+            ring.lineWidth = 3
+            ring.stroke()
+        }
     }
 
     private func drawSpriteSheetFrame() -> Bool {

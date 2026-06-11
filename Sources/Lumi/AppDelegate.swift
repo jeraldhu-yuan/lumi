@@ -5,19 +5,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var spriteController: SpriteWindowController?
     private var promptController: PromptWindowController?
     private var backend: AgentBackend = BackendFactory.make(AppConfig.backendKind)
+    private let sessionStore = MasterSessionStore()
     private var isSending = false
+    private var lastSubmittedRequest: AgentRequest?
     private var activeSessionId: String?
-    private var responseTranscript = ""
-    private var currentResponse = ""
+    private var messages: [ConversationMessage] = []
+    private var activeAssistantMessageIndex: Int?
+    private let contextStore = LumiContextStore(workspacePath: AppConfig.workspacePath)
 
     private var backendName: String { backend.kind.displayName }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        AppMenu.install()
+        _ = contextStore.ensureExists()
+        activeSessionId = sessionStore.sessionID(for: backend.kind, workspacePath: AppConfig.workspacePath)
 
         let promptController = PromptWindowController(
-            onSubmit: { [weak self] prompt in
-                self?.submit(prompt: prompt)
+            onSubmit: { [weak self] request in
+                self?.submit(request: request)
             },
             onCancel: { [weak self] in
                 self?.backend.cancel()
@@ -42,20 +48,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         )
 
-        let spriteController = SpriteWindowController { [weak self, weak promptController] in
-            guard let self, let promptController, let spriteFrame = self.spriteController?.window.frame else { return }
-            promptController.show(near: spriteFrame)
-            promptController.focusPrompt()
-            self.facePrompt()
-            self.spriteController?.setMood(.listening)
-            promptController.update(
-                status: self.activeSessionId == nil
-                    ? "Ready for a new \(self.backendName) session."
-                    : "Active session. Send a follow-up.",
-                isSending: self.isSending,
-                threadId: self.activeSessionId
-            )
-        }
+        let spriteController = SpriteWindowController(
+            onClick: { [weak self, weak promptController] in
+                guard let self, promptController != nil else { return }
+                self.showPrompt()
+            },
+            onAttachmentsDropped: { [weak self] attachments in
+                self?.receiveDroppedAttachments(attachments)
+            }
+        )
 
         self.promptController = promptController
         self.spriteController = spriteController
@@ -63,42 +64,60 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         promptController.configure(for: backend)
         spriteController.show()
         promptController.update(
-            status: "Ready in \(URL(fileURLWithPath: AppConfig.workspacePath).lastPathComponent)",
+            status: "",
             isSending: false,
-            threadId: nil
+            threadId: activeSessionId
         )
+        if AppConfig.openPromptOnLaunch {
+            showPrompt()
+        }
     }
 
-    private func submit(prompt: String) {
-        let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
+    private func submit(request: AgentRequest) {
+        guard !isSending else { return }
+
+        let trimmed = request.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty || !request.attachments.isEmpty else {
             facePrompt()
             spriteController?.setMood(.listening)
-            promptController?.update(status: "Type a request first.", isSending: false, threadId: nil)
+            promptController?.update(status: "Tell me what you need, or attach something.", isSending: false, threadId: activeSessionId)
             return
         }
+
+        let normalizedRequest = AgentRequest(
+            prompt: trimmed.isEmpty ? "Inspect the attached items and summarize what is relevant before deciding the next action." : trimmed,
+            attachments: request.attachments
+        )
+        guard normalizedRequest != lastSubmittedRequest else {
+            promptController?.update(
+                status: "That request was already sent. Edit it before submitting again.",
+                isSending: false,
+                threadId: activeSessionId
+            )
+            return
+        }
+        lastSubmittedRequest = normalizedRequest
 
         let continuingSessionId = activeSessionId
         if continuingSessionId == nil {
             activeSessionId = nil
-            responseTranscript = ""
-            promptController?.clearResponse()
+            messages = []
+            promptController?.clearMessages()
         }
 
         isSending = true
-        beginTranscriptTurn(prompt: trimmed)
+        beginConversationTurn(request: normalizedRequest)
+        promptController?.clearPrompt()
         facePrompt()
         spriteController?.setMood(.working)
         promptController?.update(
-            status: continuingSessionId == nil
-                ? "Starting \(backendName) session..."
-                : "Continuing \(backendName) session...",
+            status: "On it...",
             isSending: true,
             threadId: continuingSessionId
         )
 
         backend.submit(
-            prompt: trimmed,
+            request: normalizedRequest,
             workspacePath: AppConfig.workspacePath,
             existingSessionId: continuingSessionId
         ) { [weak self] event in
@@ -106,15 +125,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 guard let self else { return }
 
                 switch event {
-                case .status(let message):
+                case .status:
                     self.spriteController?.setMood(.working)
-                    self.promptController?.update(status: message, isSending: true, threadId: self.activeSessionId ?? continuingSessionId)
+                    self.promptController?.update(status: "Working...", isSending: true, threadId: self.activeSessionId ?? continuingSessionId)
 
                 case .sessionStarted(let sessionId):
                     self.activeSessionId = sessionId
+                    self.sessionStore.setSessionID(sessionId, for: self.backend.kind, workspacePath: AppConfig.workspacePath)
                     self.spriteController?.setMood(.working)
                     self.promptController?.update(
-                        status: "\(self.backendName) is thinking...",
+                        status: "Working...",
                         isSending: true,
                         threadId: sessionId
                     )
@@ -135,11 +155,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 case .completed(let sessionId, let finalMessage):
                     self.isSending = false
                     self.activeSessionId = sessionId ?? self.activeSessionId
+                    if let activeSessionId = self.activeSessionId {
+                        self.sessionStore.setSessionID(activeSessionId, for: self.backend.kind, workspacePath: AppConfig.workspacePath)
+                    }
                     self.finishResponse(finalMessage: finalMessage)
-                    self.promptController?.clearPrompt()
                     self.spriteController?.setMood(.threadActive)
                     self.promptController?.update(
-                        status: "Ready. Send a follow-up whenever.",
+                        status: "",
                         isSending: false,
                         threadId: self.activeSessionId
                     )
@@ -148,7 +170,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.isSending = false
                     self.appendSystemLine("Error: \(message)")
                     self.spriteController?.setMood(.failed)
-                    self.promptController?.update(status: message, isSending: false, threadId: self.activeSessionId)
+                    self.promptController?.update(status: "", isSending: false, threadId: self.activeSessionId)
                 }
             }
         }
@@ -178,7 +200,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 guard let self else { return }
                 self.spriteController?.setMood(.working)
                 self.promptController?.update(
-                    status: approved ? "Approved. \(self.backendName) is working..." : "Denied. Waiting for \(self.backendName)...",
+                    status: approved ? "On it..." : "Okay, I won't do that.",
                     isSending: true,
                     threadId: self.activeSessionId
                 )
@@ -201,16 +223,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         AppConfig.setBackendKind(kind)
         backend = BackendFactory.make(kind)
-        activeSessionId = nil
-        responseTranscript = ""
-        currentResponse = ""
-        promptController?.clearResponse()
+        lastSubmittedRequest = nil
+        activeSessionId = sessionStore.sessionID(for: kind, workspacePath: AppConfig.workspacePath)
+        messages = []
+        activeAssistantMessageIndex = nil
+        promptController?.clearMessages()
         promptController?.clearPrompt()
         promptController?.configure(for: backend)
         promptController?.update(
-            status: "Switched to \(backendName). Ready for a new session.",
+            status: "",
             isSending: false,
-            threadId: nil
+            threadId: activeSessionId
         )
         spriteController?.setMood(.listening)
     }
@@ -229,44 +252,86 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func startNewSession() {
         guard !isSending else { return }
+        sessionStore.clearSession(for: backend.kind, workspacePath: AppConfig.workspacePath)
+        lastSubmittedRequest = nil
         activeSessionId = nil
-        responseTranscript = ""
-        currentResponse = ""
+        messages = []
+        activeAssistantMessageIndex = nil
         backend.reset()
-        promptController?.clearResponse()
+        promptController?.clearMessages()
         promptController?.clearPrompt()
-        promptController?.update(status: "Ready for a new \(backendName) session.", isSending: false, threadId: nil)
+        promptController?.update(status: "", isSending: false, threadId: nil)
         spriteController?.setMood(.listening)
     }
 
-    private func beginTranscriptTurn(prompt: String) {
-        currentResponse = ""
-        let separator = responseTranscript.isEmpty ? "" : "\n\n"
-        responseTranscript += "\(separator)You: \(prompt)\n\nLumi: "
-        promptController?.setResponse(responseTranscript)
+    private func beginConversationTurn(request: AgentRequest) {
+        let attachmentLine = request.attachments.isEmpty
+            ? ""
+            : "\n\nAttachments: " + request.attachments.map(\.displayName).joined(separator: ", ")
+        messages.append(ConversationMessage(role: .user, text: request.prompt + attachmentLine))
+        messages.append(ConversationMessage(role: .assistant, text: ""))
+        activeAssistantMessageIndex = messages.indices.last
+        promptController?.setMessages(messages)
     }
 
     private func appendResponseDelta(_ delta: String) {
-        currentResponse += delta
-        responseTranscript += delta
-        promptController?.appendResponse(delta)
+        guard let index = activeAssistantMessageIndex, messages.indices.contains(index) else { return }
+        messages[index].text += delta
+        promptController?.setMessages(messages)
     }
 
     private func finishResponse(finalMessage: String) {
-        let trimmedCurrent = currentResponse.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let index = activeAssistantMessageIndex, messages.indices.contains(index) else { return }
+        let trimmedCurrent = messages[index].text.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedFinal = finalMessage.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if trimmedCurrent.isEmpty && !trimmedFinal.isEmpty {
-            responseTranscript += trimmedFinal
-            promptController?.appendResponse(trimmedFinal)
+            messages[index].text = trimmedFinal
         }
-        currentResponse = ""
+        activeAssistantMessageIndex = nil
+        promptController?.setMessages(messages)
     }
 
     private func appendSystemLine(_ text: String) {
-        let separator = responseTranscript.isEmpty ? "" : "\n\n"
-        responseTranscript += "\(separator)\(text)"
-        promptController?.setResponse(responseTranscript)
+        if let index = activeAssistantMessageIndex,
+           messages.indices.contains(index),
+           messages[index].text.isEmpty {
+            messages.remove(at: index)
+        }
+        activeAssistantMessageIndex = nil
+        messages.append(ConversationMessage(role: .system, text: text))
+        promptController?.setMessages(messages)
+    }
+
+    private func receiveDroppedAttachments(_ attachments: [AgentAttachment]) {
+        guard !attachments.isEmpty, let promptController, let spriteController else { return }
+        promptController.show(near: spriteController.window.frame)
+        promptController.addAttachments(attachments)
+        promptController.focusPrompt()
+        promptController.update(
+            status: "Got \(attachments.count == 1 ? "it" : "them"). What should I do with \(attachments.count == 1 ? "it" : "them")?",
+            isSending: false,
+            threadId: activeSessionId
+        )
+        spriteController.setMood(.success)
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(1.2))
+            guard self?.isSending == false else { return }
+            self?.spriteController?.setMood(.listening)
+        }
+    }
+
+    private func showPrompt() {
+        guard let promptController, let spriteFrame = spriteController?.window.frame else { return }
+        promptController.show(near: spriteFrame)
+        promptController.focusPrompt()
+        facePrompt()
+        spriteController?.setMood(.listening)
+        promptController.update(
+            status: isSending ? "Working..." : "",
+            isSending: isSending,
+            threadId: activeSessionId
+        )
     }
 
     private func facePrompt() {

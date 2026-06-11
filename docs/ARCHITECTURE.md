@@ -5,7 +5,9 @@ Lumi is a single-target Swift + AppKit application with no third-party dependenc
 ## Windows
 
 - **`SpriteWindowController`** — the desktop sprite: a borderless, desktop-level window running an intent-driven animation state machine (idle, listening, reading, thinking, working, asking, success, failure, plus autonomous sleep/curiosity behaviors). It has no knowledge of AI backends; its public surface is `setMood(_:)` and `face(point:)`.
-- **`PromptWindowController` / `PromptView`** — the prompt panel: transcript, input field, backend selector, status line, and a send/stop control. The window rests at a compact height and expands when a conversation produces output. User intent is forwarded through closures; rendering is driven by `AppDelegate`.
+- **`PromptWindowController` / `PromptView`** — window scaffolding, provider selection, status, and master-thread controls. The panel rests at a spacious compact height and expands when a conversation produces output.
+- **`ConversationTranscriptView`** — renders structured user, Lumi, and status messages with Markdown styling and clickable links.
+- **`PromptComposerView`** — owns the native text view, attachment chips, file picker, pasteboard handling, auto-growing input, and drag/drop.
 
 ## Backend Abstraction
 
@@ -15,7 +17,7 @@ Lumi is a single-target Swift + AppKit application with no third-party dependenc
 protocol AgentBackend: AnyObject {
     var kind: BackendKind { get }
     var capabilities: BackendCapabilities { get }
-    func submit(prompt:workspacePath:existingSessionId:onEvent:)
+    func submit(request:workspacePath:existingSessionId:onEvent:)
     func cancel()
     func reset()
 }
@@ -34,9 +36,19 @@ Backends emit a small event vocabulary (`AgentEvent`): `status`, `sessionStarted
 
 Both backends are full agents: they operate in a configured workspace and emit `approvalRequest` events before acting on it. Lumi intentionally supports only agent backends; chat-only integrations were removed in 0.4.0.
 
-### Persona
+### Supervisor Instructions
 
-A shared persona (`AppConfig.persona`, overridable via `LUMI_PERSONA`) establishes a consistent assistant identity across engines. Claude Code receives it via `--append-system-prompt`; the Codex app-server protocol has no system-prompt field, so the persona is prepended to the first turn of each thread.
+`AppConfig.supervisorInstructions(for:)` combines Lumi's identity with a strict master-coordinator role and provider-specific capability guidance. Claude Code receives it through `--append-system-prompt`; Codex receives it as app-server `developerInstructions` when the master thread starts. The instructions require native provider capabilities and prohibit invented commands.
+
+Codex discovers the workspace `AGENTS.md` normally. Claude Code does not read `AGENTS.md` by default, so Lumi includes the workspace copy in Claude's supervisor instructions to keep durable guidance consistent across providers.
+
+### Master Sessions
+
+`MasterSessionStore` persists one session identifier for each provider/workspace pair in `UserDefaults`. Switching providers restores that provider's master session; the new-thread button clears only the active provider's master.
+
+### Attachments
+
+`AgentRequest` carries text plus typed local attachments. Codex receives images as `localImage` input and files/folders as app-server `mention` input. Claude Code receives absolute paths in the prompt and `--add-dir` access for their parent directories. The composer accepts pasted file URLs and images; the sprite accepts file/folder drops and forwards them to the same composer pipeline.
 
 ### Parsing
 

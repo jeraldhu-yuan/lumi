@@ -5,14 +5,16 @@ final class ClaudeCodeBackend: AgentBackend {
     let capabilities = BackendCapabilities(
         usesWorkspace: true,
         supportsApprovals: false,
-        canOpenCompanionApp: false
+        canOpenCompanionApp: false,
+        supervisorSummary: "Claude coordinator - native subagents, goals, memory",
+        nativeFeatures: ["subagents", "background agents", "/goal", "/compact", "/fork", "/loop", "/batch", "auto-memory"]
     )
 
     private let queue = DispatchQueue(label: "ClaudeCodeBackend")
     private var activeProcess: Process?
 
     func submit(
-        prompt: String,
+        request: AgentRequest,
         workspacePath: String,
         existingSessionId: String?,
         onEvent: @escaping (AgentEvent) -> Void
@@ -32,7 +34,7 @@ final class ClaudeCodeBackend: AgentBackend {
 
             self.run(
                 executable: executable,
-                prompt: prompt,
+                request: request,
                 workspacePath: workspacePath,
                 existingSessionId: existingSessionId,
                 onEvent: onEvent
@@ -50,7 +52,7 @@ final class ClaudeCodeBackend: AgentBackend {
 
     private func run(
         executable: String,
-        prompt: String,
+        request: AgentRequest,
         workspacePath: String,
         existingSessionId: String?,
         onEvent: @escaping (AgentEvent) -> Void
@@ -60,15 +62,20 @@ final class ClaudeCodeBackend: AgentBackend {
         let stderrPipe = Pipe()
 
         var arguments = [
-            "-p", prompt,
+            "-p", request.promptForPathAwareBackend,
             "--output-format", "stream-json",
             "--verbose",
             "--include-partial-messages",
             "--permission-mode", AppConfig.claudePermissionMode,
-            "--append-system-prompt", AppConfig.persona
+            "--append-system-prompt", AppConfig.supervisorInstructions(for: .claudeCode)
         ]
         if let existingSessionId, !existingSessionId.isEmpty {
             arguments += ["--resume", existingSessionId]
+        } else {
+            arguments += ["--name", "Lumi Master"]
+        }
+        for directory in Set(request.attachments.map { $0.url.deletingLastPathComponent().path }).sorted() {
+            arguments += ["--add-dir", directory]
         }
 
         process.executableURL = URL(fileURLWithPath: executable)

@@ -33,6 +33,69 @@ do {
     expect(first.isEmpty && second == [data("héllo")], "LineBuffer reassembles multi-byte UTF-8 split across chunks")
 }
 
+// MARK: - Requests and attachments
+
+do {
+    let image = AgentAttachment.from(url: URL(fileURLWithPath: "/tmp/example.png"))
+    let document = AgentAttachment.from(url: URL(fileURLWithPath: "/tmp/notes.pdf"))
+    let request = AgentRequest(prompt: "Review these", attachments: [image, document])
+    let pastedImage = AgentAttachment(url: URL(fileURLWithPath: "/tmp/clipboard-id.png"), kind: .image, label: "Pasted image")
+    expect(image.kind == .image, "attachments: image extension is classified")
+    expect(document.kind == .file, "attachments: document extension is classified")
+    expect(pastedImage.displayName == "Pasted image", "attachments: pasted images use a friendly label")
+    expect(request.promptForPathAwareBackend.contains("/tmp/example.png"), "requests: attachment paths are included for CLI backends")
+}
+
+// MARK: - MasterSessionStore
+
+do {
+    let suiteName = "LumiTests-\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+    let store = MasterSessionStore(defaults: defaults)
+
+    expect(store.sessionID(for: .codex, workspacePath: "/tmp/a") == nil, "master sessions: missing session returns nil")
+    store.setSessionID("codex-1", for: .codex, workspacePath: "/tmp/a")
+    store.setSessionID("claude-1", for: .claudeCode, workspacePath: "/tmp/a")
+    expect(store.sessionID(for: .codex, workspacePath: "/tmp/a") == "codex-1", "master sessions: stores Codex session")
+    expect(store.sessionID(for: .claudeCode, workspacePath: "/tmp/a") == "claude-1", "master sessions: separates providers")
+    store.clearSession(for: .codex, workspacePath: "/tmp/a")
+    expect(store.sessionID(for: .codex, workspacePath: "/tmp/a") == nil, "master sessions: clears one provider")
+    expect(store.sessionID(for: .claudeCode, workspacePath: "/tmp/a") == "claude-1", "master sessions: preserves other providers")
+}
+
+// MARK: - LumiContextStore
+
+do {
+    let workspace = FileManager.default.temporaryDirectory
+        .appendingPathComponent("LumiContextTests-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: workspace) }
+    let store = LumiContextStore(workspacePath: workspace.path)
+
+    let url = store.ensureExists()
+    expect(FileManager.default.fileExists(atPath: url.path), "context: creates a workspace-local context file")
+    expect(store.text().contains("# Lumi Context"), "context: reads the default context")
+    try? "durable preference".write(to: url, atomically: true, encoding: .utf8)
+    expect(store.text() == "durable preference", "context: preserves and reads refinements")
+}
+
+// MARK: - CodexSessionRecovery
+
+do {
+    var stale = CodexSessionRecovery(requestedSessionID: "missing-thread")
+    expect(stale.shouldRetryWithFreshThread(responseID: 2), "codex recovery: failed resume starts a fresh thread")
+    expect(stale.readyThreadIsNew, "codex recovery: replacement thread is persisted as new")
+    expect(!stale.shouldRetryWithFreshThread(responseID: 2), "codex recovery: retries only once")
+
+    var fresh = CodexSessionRecovery(requestedSessionID: nil)
+    expect(!fresh.shouldRetryWithFreshThread(responseID: 2), "codex recovery: fresh thread errors are not retried as resume failures")
+    expect(fresh.readyThreadIsNew, "codex recovery: initial thread is reported as new")
+
+    var active = CodexSessionRecovery(requestedSessionID: "active-thread")
+    expect(!active.shouldRetryWithFreshThread(responseID: 3), "codex recovery: turn failures do not reset the session")
+    expect(!active.readyThreadIsNew, "codex recovery: successful resume stays active")
+}
+
 // MARK: - ClaudeCodeStreamParser
 
 do {

@@ -5,7 +5,9 @@ final class CodexBackend: AgentBackend {
     let capabilities = BackendCapabilities(
         usesWorkspace: true,
         supportsApprovals: true,
-        canOpenCompanionApp: true
+        canOpenCompanionApp: true,
+        supervisorSummary: "Codex coordinator - native subagents, goals, memory",
+        nativeFeatures: ["subagents", "parallel agents", "goals", "compaction", "memories", "thread forks"]
     )
 
     private let queue = DispatchQueue(label: "CodexBackend")
@@ -13,7 +15,7 @@ final class CodexBackend: AgentBackend {
     private var cancelAction: (() -> Void)?
 
     func submit(
-        prompt: String,
+        request: AgentRequest,
         workspacePath: String,
         existingSessionId: String?,
         onEvent: @escaping (AgentEvent) -> Void
@@ -26,7 +28,7 @@ final class CodexBackend: AgentBackend {
                 return
             }
 
-            self.run(prompt: prompt, workspacePath: workspacePath, existingThreadId: existingSessionId, onEvent: onEvent)
+            self.run(request: request, workspacePath: workspacePath, existingThreadId: existingSessionId, onEvent: onEvent)
         }
     }
 
@@ -39,7 +41,7 @@ final class CodexBackend: AgentBackend {
     func reset() {}
 
     private func run(
-        prompt: String,
+        request: AgentRequest,
         workspacePath: String,
         existingThreadId: String?,
         onEvent: @escaping (AgentEvent) -> Void
@@ -65,6 +67,7 @@ final class CodexBackend: AgentBackend {
         var completed = false
         var lastTurnError: String?
         var sawTurnStarted = false
+        var sessionRecovery = CodexSessionRecovery(requestedSessionID: existingThreadId)
 
         func send(_ message: [String: Any]) {
             do {
@@ -90,27 +93,70 @@ final class CodexBackend: AgentBackend {
             ])
         }
 
-        // The app-server protocol has no system-prompt slot, so the persona
-        // rides along as a preamble on the first turn of each thread.
-        let turnText = existingThreadId == nil
-            ? "<persona>\n\(AppConfig.persona)\n</persona>\n\n\(prompt)"
-            : prompt
-
         func sendTurnStart(id: Int, threadId: String) {
+            var input: [[String: Any]] = [
+                [
+                    "type": "text",
+                    "text": request.prompt,
+                    "text_elements": []
+                ]
+            ]
+            for attachment in request.attachments {
+                switch attachment.kind {
+                case .image:
+                    input.append([
+                        "type": "localImage",
+                        "path": attachment.url.path
+                    ])
+                case .file, .directory:
+                    input.append([
+                        "type": "mention",
+                        "name": attachment.displayName,
+                        "path": attachment.url.path
+                    ])
+                }
+            }
+
+            var params: [String: Any] = [
+                "threadId": threadId,
+                "cwd": workspacePath,
+                "approvalPolicy": AppConfig.approvalPolicy,
+                "input": input
+            ]
+            let context = LumiContextStore(workspacePath: workspacePath).text()
+            if !context.isEmpty {
+                params["additionalContext"] = [
+                    "lumi-context": [
+                        "kind": "application",
+                        "value": """
+                        Lumi's durable context is stored at \(LumiContextStore(workspacePath: workspacePath).contextURL.path). Use it as concise background. After a durable preference, decision, project state, or unresolved commitment changes, refine that file conservatively. Do not turn it into a transcript or log.
+
+                        <lumi_context>
+                        \(context)
+                        </lumi_context>
+                        """
+                    ]
+                ]
+            }
+
             send([
                 "method": "turn/start",
                 "id": id,
+                "params": params
+            ])
+        }
+
+        func sendThreadStart() {
+            send([
+                "method": "thread/start",
+                "id": 2,
                 "params": [
-                    "threadId": threadId,
                     "cwd": workspacePath,
+                    "sandbox": AppConfig.sandboxMode,
                     "approvalPolicy": AppConfig.approvalPolicy,
-                    "input": [
-                        [
-                            "type": "text",
-                            "text": turnText,
-                            "text_elements": []
-                        ]
-                    ]
+                    "developerInstructions": AppConfig.supervisorInstructions(for: .codex),
+                    "personality": "friendly",
+                    "threadSource": "user"
                 ]
             ])
         }
@@ -296,6 +342,12 @@ final class CodexBackend: AgentBackend {
 
                     if let error = message["error"] as? [String: Any] {
                         let text = error["message"] as? String ?? "Codex app-server returned an error."
+                        if sessionRecovery.shouldRetryWithFreshThread(responseID: message["id"] as? Int) {
+                            threadId = nil
+                            onEvent(.status("Stored Codex thread is unavailable. Starting fresh..."))
+                            sendThreadStart()
+                            continue
+                        }
                         finish(.failed(text))
                         return
                     }
@@ -314,26 +366,17 @@ final class CodexBackend: AgentBackend {
                                 ]
                             ])
                         } else {
-                            send([
-                                "method": "thread/start",
-                                "id": 2,
-                                "params": [
-                                    "cwd": workspacePath,
-                                    "sandbox": AppConfig.sandboxMode,
-                                    "approvalPolicy": AppConfig.approvalPolicy,
-                                    "threadSource": "user"
-                                ]
-                            ])
+                            sendThreadStart()
                         }
                         continue
                     }
 
                     if (message["id"] as? Int) == 2,
                        let result = message["result"] as? [String: Any],
-                       let thread = result["thread"] as? [String: Any],
-                       let readyThreadId = thread["id"] as? String {
+                        let thread = result["thread"] as? [String: Any],
+                        let readyThreadId = thread["id"] as? String {
                         threadId = readyThreadId
-                        if existingThreadId == nil {
+                        if sessionRecovery.readyThreadIsNew {
                             onEvent(.sessionStarted(id: readyThreadId))
                         } else {
                             onEvent(.status("Active thread resumed."))
@@ -451,7 +494,7 @@ final class CodexBackend: AgentBackend {
                 "clientInfo": [
                     "name": "lumi",
                     "title": "Lumi",
-                    "version": "0.2.0"
+                    "version": "0.5.0"
                 ],
                 "capabilities": [
                     "experimentalApi": true,

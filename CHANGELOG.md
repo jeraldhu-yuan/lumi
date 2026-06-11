@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.0 - 2026-06-11
+
+### Added
+- Durable Lumi master sessions, stored separately for each provider and workspace and restored across launches.
+- Provider-specific coordinator instructions using Codex and Claude Code's native subagents, goals, compaction, memory, and workflow facilities.
+- Structured Markdown conversation rendering with separate user, Lumi, and status messages.
+- Auto-growing native composer with standard Edit commands, Control-A Select All, attachment chips, file picker, pasted images, and drag/drop.
+- File and folder drops directly onto the Lumi sprite, with a receiving highlight and short success animation.
+
+### Changed
+- Codex supervisor instructions now use app-server `developerInstructions` instead of modifying the first user message.
+- Claude Code receives workspace `AGENTS.md` guidance so both providers share the same durable workspace context.
+- The prompt panel is wider and less compressed, with corrected caret and placeholder alignment.
+
 ## 0.4.1 — 2026-06-10
 
 ### Added

@@ -5,6 +5,10 @@ final class ConversationTranscriptView: NSScrollView {
 
     private let transcriptTextView = NSTextView()
     private var lastReportedHeight: CGFloat = 0
+    // Markdown parsing is the expensive part of rendering, and during
+    // streaming only the final message changes. Cache renders per index so
+    // each delta re-parses one message, not the whole conversation.
+    private var renderCache: [Int: (text: String, role: ConversationRole, rendered: NSAttributedString)] = [:]
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -65,12 +69,31 @@ final class ConversationTranscriptView: NSScrollView {
                     .foregroundColor: labelColor
                 ]
             ))
-            rendered.append(Self.renderMarkdown(message.text, role: message.role))
+
+            let body: NSAttributedString
+            if let cached = renderCache[index], cached.text == message.text, cached.role == message.role {
+                body = cached.rendered
+            } else {
+                body = Self.renderMarkdown(message.text, role: message.role)
+                renderCache[index] = (message.text, message.role, body)
+            }
+            rendered.append(body)
         }
 
+        renderCache = renderCache.filter { $0.key < messages.count }
+
+        let wasNearBottom = isNearBottom
         transcriptTextView.textStorage?.setAttributedString(rendered)
-        scrollToBottom()
+        if wasNearBottom {
+            scrollToBottom()
+        }
         reportContentHeight()
+    }
+
+    private var isNearBottom: Bool {
+        guard let documentView else { return true }
+        let visibleMaxY = documentVisibleRect.maxY
+        return documentView.bounds.height - visibleMaxY < 60
     }
 
     override func layout() {

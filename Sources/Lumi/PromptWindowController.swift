@@ -186,7 +186,8 @@ final class PromptView: NSVisualEffectView, NSTextViewDelegate {
         titleLabel.font = .systemFont(ofSize: 15, weight: .semibold)
         titleLabel.textColor = .labelColor
 
-        backendPopup.addItems(withTitles: BackendKind.allCases.map(\.displayName))
+        backendPopup.menu = Self.makeBackendMenu()
+        backendPopup.autoenablesItems = false
         backendPopup.controlSize = .small
         backendPopup.font = .systemFont(ofSize: 11, weight: .medium)
         backendPopup.target = self
@@ -292,6 +293,40 @@ final class PromptView: NSVisualEffectView, NSTextViewDelegate {
         fatalError("init(coder:) has not been implemented")
     }
 
+    private static func makeBackendMenu() -> NSMenu {
+        let menu = NSMenu()
+
+        func addHeader(_ title: String) {
+            let item = NSMenuItem()
+            item.attributedTitle = NSAttributedString(
+                string: title,
+                attributes: [
+                    .font: NSFont.systemFont(ofSize: 9.5, weight: .semibold),
+                    .foregroundColor: NSColor.tertiaryLabelColor,
+                    .kern: 0.8
+                ]
+            )
+            item.isEnabled = false
+            menu.addItem(item)
+        }
+
+        func addBackend(_ kind: BackendKind) {
+            let item = NSMenuItem(title: kind.displayName, action: nil, keyEquivalent: "")
+            item.representedObject = kind.rawValue
+            item.toolTip = kind.selectorDetail
+            item.indentationLevel = 1
+            menu.addItem(item)
+        }
+
+        addHeader("AGENTS — RUN IN YOUR WORKSPACE")
+        BackendKind.allCases.filter(\.isAgent).forEach(addBackend)
+        menu.addItem(.separator())
+        addHeader("CHAT")
+        BackendKind.allCases.filter { !$0.isAgent }.forEach(addBackend)
+
+        return menu
+    }
+
     private static func roundedScroll(for textView: NSTextView, backgroundAlpha: CGFloat) -> NSScrollView {
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
@@ -321,8 +356,8 @@ final class PromptView: NSVisualEffectView, NSTextViewDelegate {
         placeholderLabel.stringValue = "Ask \(backendName) anything..."
         openAppButton.isHidden = !showsCompanionApp
         workspaceLabel.isHidden = !showsWorkspace
-        if let index = BackendKind.allCases.firstIndex(of: kind) {
-            backendPopup.selectItem(at: index)
+        if let item = backendPopup.menu?.items.first(where: { ($0.representedObject as? String) == kind.rawValue }) {
+            backendPopup.select(item)
         }
     }
 
@@ -379,9 +414,9 @@ final class PromptView: NSVisualEffectView, NSTextViewDelegate {
     }
 
     @objc private func backendChanged() {
-        let index = backendPopup.indexOfSelectedItem
-        guard index >= 0, index < BackendKind.allCases.count else { return }
-        onBackendChange(BackendKind.allCases[index])
+        guard let raw = backendPopup.selectedItem?.representedObject as? String,
+              let kind = BackendKind(rawValue: raw) else { return }
+        onBackendChange(kind)
     }
 
     func textDidChange(_ notification: Notification) {

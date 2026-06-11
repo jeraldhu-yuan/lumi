@@ -2,6 +2,9 @@ import AppKit
 
 @MainActor
 final class PromptWindowController: NSObject {
+    private static let compactHeight: CGFloat = 176
+    private static let expandedHeight: CGFloat = 430
+
     let window: NSPanel
 
     private let promptView: PromptView
@@ -31,7 +34,7 @@ final class PromptWindowController: NSObject {
         )
 
         window = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 432),
+            contentRect: NSRect(x: 0, y: 0, width: 430, height: Self.compactHeight),
             styleMask: [.titled, .closable, .utilityWindow, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -54,6 +57,9 @@ final class PromptWindowController: NSObject {
         }
         promptView.onSubmit = { [weak self] prompt in
             self?.onSubmit(prompt)
+        }
+        promptView.onTranscriptVisibilityChange = { [weak self] expanded in
+            self?.setExpanded(expanded)
         }
     }
 
@@ -100,6 +106,19 @@ final class PromptWindowController: NSObject {
         promptView.clearPrompt()
     }
 
+    private func setExpanded(_ expanded: Bool) {
+        let target = expanded ? Self.expandedHeight : Self.compactHeight
+        var frame = window.frame
+        guard abs(frame.height - target) > 0.5 else { return }
+
+        frame.origin.y += frame.height - target
+        frame.size.height = target
+        if let screen = window.screen ?? NSScreen.main {
+            frame.origin.y = max(frame.origin.y, screen.visibleFrame.minY + 8)
+        }
+        window.setFrame(frame, display: true, animate: window.isVisible)
+    }
+
     private func position(near spriteFrame: NSRect) {
         guard let screen = window.screen ?? NSScreen.main else { return }
         let visible = screen.visibleFrame
@@ -124,8 +143,10 @@ extension PromptWindowController: NSWindowDelegate {
 final class PromptView: NSVisualEffectView, NSTextViewDelegate {
     var onSubmit: ((String) -> Void)?
     var onTextChange: ((String) -> Void)?
+    var onTranscriptVisibilityChange: ((Bool) -> Void)?
 
     private let transcriptTextView = NSTextView()
+    private let transcriptScroll = NSScrollView()
     private let inputTextView = NSTextView()
     private let titleLabel = NSTextField(labelWithString: "Lumi")
     private let workspaceLabel: NSTextField
@@ -162,7 +183,7 @@ final class PromptView: NSVisualEffectView, NSTextViewDelegate {
         blendingMode = .behindWindow
         state = .active
 
-        titleLabel.font = .systemFont(ofSize: 16, weight: .semibold)
+        titleLabel.font = .systemFont(ofSize: 15, weight: .semibold)
         titleLabel.textColor = .labelColor
 
         backendPopup.addItems(withTitles: BackendKind.allCases.map(\.displayName))
@@ -180,16 +201,25 @@ final class PromptView: NSVisualEffectView, NSTextViewDelegate {
         workspaceLabel.textColor = .tertiaryLabelColor
         workspaceLabel.lineBreakMode = .byTruncatingMiddle
 
-        let transcriptScroll = Self.roundedScroll(for: transcriptTextView, backgroundAlpha: 0.45)
+        // The transcript floats directly on the window blur — no box. It is
+        // hidden entirely until a conversation produces text, which keeps the
+        // resting window a compact ask bar.
+        transcriptScroll.hasVerticalScroller = true
+        transcriptScroll.autohidesScrollers = true
+        transcriptScroll.borderType = .noBorder
+        transcriptScroll.drawsBackground = false
+        transcriptScroll.documentView = transcriptTextView
+        transcriptScroll.isHidden = true
+
         transcriptTextView.font = .systemFont(ofSize: 13)
         transcriptTextView.isRichText = false
         transcriptTextView.isEditable = false
         transcriptTextView.isSelectable = true
         transcriptTextView.drawsBackground = false
         transcriptTextView.textColor = .labelColor
-        transcriptTextView.textContainerInset = NSSize(width: 10, height: 10)
+        transcriptTextView.textContainerInset = NSSize(width: 4, height: 6)
 
-        let inputScroll = Self.roundedScroll(for: inputTextView, backgroundAlpha: 0.65)
+        let inputScroll = Self.roundedScroll(for: inputTextView, backgroundAlpha: 0.55)
         inputTextView.font = .systemFont(ofSize: 13)
         inputTextView.isRichText = false
         inputTextView.allowsUndo = true
@@ -200,6 +230,7 @@ final class PromptView: NSVisualEffectView, NSTextViewDelegate {
 
         placeholderLabel.font = .systemFont(ofSize: 13)
         placeholderLabel.textColor = .placeholderTextColor
+        placeholderLabel.lineBreakMode = .byTruncatingTail
         placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
         inputScroll.addSubview(placeholderLabel)
 
@@ -215,7 +246,7 @@ final class PromptView: NSVisualEffectView, NSTextViewDelegate {
         inputRow.alignment = .centerY
 
         statusLabel.font = .systemFont(ofSize: 11)
-        statusLabel.textColor = .secondaryLabelColor
+        statusLabel.textColor = .tertiaryLabelColor
         statusLabel.lineBreakMode = .byTruncatingTail
         statusLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
@@ -247,12 +278,12 @@ final class PromptView: NSVisualEffectView, NSTextViewDelegate {
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
             stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
-            stack.topAnchor.constraint(equalTo: topAnchor, constant: 30),
-            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -14),
-            transcriptScroll.heightAnchor.constraint(equalToConstant: 208),
-            inputScroll.heightAnchor.constraint(equalToConstant: 64),
+            stack.topAnchor.constraint(equalTo: topAnchor, constant: 28),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
+            inputScroll.heightAnchor.constraint(equalToConstant: 52),
             sendButton.widthAnchor.constraint(equalToConstant: 34),
             placeholderLabel.leadingAnchor.constraint(equalTo: inputScroll.leadingAnchor, constant: 14),
+            placeholderLabel.trailingAnchor.constraint(lessThanOrEqualTo: inputScroll.trailingAnchor, constant: -14),
             placeholderLabel.topAnchor.constraint(equalTo: inputScroll.topAnchor, constant: 10)
         ])
     }
@@ -270,7 +301,7 @@ final class PromptView: NSVisualEffectView, NSTextViewDelegate {
         scrollView.backgroundColor = NSColor.textBackgroundColor.withAlphaComponent(backgroundAlpha)
         scrollView.documentView = textView
         scrollView.wantsLayer = true
-        scrollView.layer?.cornerRadius = 10
+        scrollView.layer?.cornerRadius = 12
         scrollView.layer?.masksToBounds = true
         return scrollView
     }
@@ -318,16 +349,19 @@ final class PromptView: NSVisualEffectView, NSTextViewDelegate {
 
     func setResponse(_ text: String) {
         transcriptTextView.string = text
+        updateTranscriptVisibility()
         scrollTranscriptToBottom()
     }
 
     func appendResponse(_ text: String) {
         transcriptTextView.string += text
+        updateTranscriptVisibility()
         scrollTranscriptToBottom()
     }
 
     func clearResponse() {
         transcriptTextView.string = ""
+        updateTranscriptVisibility()
     }
 
     func clearPrompt() {
@@ -357,6 +391,13 @@ final class PromptView: NSVisualEffectView, NSTextViewDelegate {
 
     private func updatePlaceholderVisibility() {
         placeholderLabel.isHidden = !inputTextView.string.isEmpty
+    }
+
+    private func updateTranscriptVisibility() {
+        let hasContent = !transcriptTextView.string.isEmpty
+        guard transcriptScroll.isHidden == hasContent else { return }
+        transcriptScroll.isHidden = !hasContent
+        onTranscriptVisibilityChange?(hasContent)
     }
 
     private func scrollTranscriptToBottom() {

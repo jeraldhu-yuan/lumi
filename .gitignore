@@ -36,3 +36,6 @@ Assets/ChibiAssistant/generated/sleep-wake/*
 !Assets/ChibiAssistant/generated/sleep-wake/sleep-wake-sheet.png
 !Assets/ChibiAssistant/generated/sleep-wake/sleep-wake-sheet.json
 !Assets/ChibiAssistant/generated/sleep-wake/sleep-wake-sheet-preview.png
+!Assets/ChibiAssistant/generated/expressions/
+Assets/ChibiAssistant/generated/expressions/*
+!Assets/ChibiAssistant/generated/expressions/expressions-sheet.png

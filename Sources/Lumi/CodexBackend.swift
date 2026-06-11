@@ -524,7 +524,7 @@ final class CodexBackend: AgentBackend {
                 "clientInfo": [
                     "name": "lumi",
                     "title": "Lumi",
-                    "version": "0.5.1"
+                    "version": "0.6.0"
                 ],
                 "capabilities": [
                     "experimentalApi": true,

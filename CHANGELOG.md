@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.0 — 2026-06-11
+
+### Added
+- **Persistent Claude Code session.** The CLI now runs as a single long-lived bidirectional `stream-json` process per master session; follow-up prompts continue the same in-process conversation instead of paying a fresh `claude -p` cold start each turn.
+- **Interactive Claude Code approvals.** Running as `--permission-prompt-tool stdio`, tool-use permission checks route into Lumi's Allow/Deny dialog, reaching parity with the Codex backend.
+- **Live activity line.** Tool calls, file edits, and subagent work surface as a progress line on both backends (`AgentEvent.activity`).
+
 ## 0.5.1 — 2026-06-11
 
 ### Fixed

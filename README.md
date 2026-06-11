@@ -14,7 +14,9 @@ https://github.com/user-attachments/assets/ee137b4e-1128-4d24-b2ef-56fb5e3fd508
 - **Persistent master sessions** — one resumable Lumi master thread per provider and workspace, restored across app launches.
 - **Native agent coordination** — Codex and Claude Code retain their own subagents, goals, compaction, memory, and workflow facilities. Lumi does not invent a shared command language.
 - **Provider adapters** — OpenAI Codex via `codex app-server` and Anthropic Claude Code via the headless CLI's `stream-json` interface.
-- **Human-in-the-loop approvals** — command execution, file changes, and permission escalations surface as Allow/Deny dialogs; nothing runs silently.
+- **Human-in-the-loop approvals** — command execution, file changes, and permission escalations surface as Allow/Deny dialogs on both backends; nothing runs silently.
+- **Live activity** — tool calls, edits, and subagent work surface as a progress line so you can see what the agent is doing.
+- **Persistent Claude Code session** — one long-lived process per master session; follow-up prompts skip the cold start and continue the same in-process conversation.
 - **Streaming and cancellation** — responses stream into the prompt window token by token and in-flight requests can be stopped.
 - **Desktop-native composer** — multiline input, Undo/Cut/Copy/Paste/Select All, file picker, pasted images, attachment chips, and file/folder drag-and-drop. Files may also be dropped directly onto the sprite.
 - **Readable conversations** — user and Lumi messages render separately with Markdown formatting and clickable links.
@@ -98,7 +100,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for a complete overview, includ
 ## Known Limitations
 
 - Interactive input requests, MCP elicitations, and dynamic tool calls from the Codex backend are not yet surfaced in the UI.
-- Claude Code approvals are policy-based (`--permission-mode`) rather than interactive; actions outside the configured policy are denied.
+- The Codex backend starts a fresh `app-server` process per turn; the Claude Code backend keeps one process alive per session.
 - The Codex app-server protocol is experimental and subject to upstream change.
 
 ## Contributing

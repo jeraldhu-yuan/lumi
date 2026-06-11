@@ -126,7 +126,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.spriteController?.setMood(.threadActive)
 
                 case .approvalRequest(let description, let respond):
-                    self.spriteController?.setMood(.listening)
+                    self.spriteController?.setMood(.asking)
                     self.promptController?.update(
                         status: "Waiting for your approval...",
                         isSending: true,

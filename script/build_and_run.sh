@@ -62,6 +62,7 @@ copy_asset "Assets/ChibiAssistant/generated/standing-orientations/standing-orien
 copy_asset "Assets/ChibiAssistant/generated/sitting-orientations/sitting-orientations-sheet.png"
 copy_asset "Assets/ChibiAssistant/generated/sleep-wake/sleep-wake-sheet.png"
 copy_asset "Assets/ChibiAssistant/generated/action-sprites/action-sprites-sheet.png"
+copy_asset "Assets/ChibiAssistant/generated/expressions/expressions-sheet.png"
 
 cat >"$INFO_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

@@ -7,6 +7,7 @@ enum SpriteMood {
     case thinking
     case threadActive
     case working
+    case asking
     case success
     case failed
 }
@@ -151,6 +152,16 @@ private enum ActionFrame: Int {
     case flyRightB = 3
     case thinking = 4
     case happyWave = 5
+}
+
+private enum ExpressionFrame: Int {
+    case pleading = 0
+    case talkPoint = 1
+    case talkRaise = 2
+    case talkGesture = 3
+    case dizzy = 4
+    case celebrate = 5
+    case listen = 6
 }
 
 private enum GazeDirection {
@@ -366,6 +377,7 @@ final class SpriteView: NSView {
     private static let sittingFrameOffset = 4_000
     private static let sleepWakeFrameOffset = 5_000
     private static let actionFrameOffset = 6_000
+    private static let expressionFrameOffset = 7_000
 
     private let onClick: () -> Void
     private let spriteSheet = SpriteSheet()
@@ -390,6 +402,10 @@ final class SpriteView: NSView {
     private let actionSpriteSheet = SpriteSheet(
         relativePath: ["Assets", "ChibiAssistant", "generated", "action-sprites", "action-sprites-sheet.png"],
         columns: 6
+    )
+    private let expressionSpriteSheet = SpriteSheet(
+        relativePath: ["Assets", "ChibiAssistant", "generated", "expressions", "expressions-sheet.png"],
+        columns: 7
     )
     private var animationTimer: Timer?
     private var frameTick = 0
@@ -746,7 +762,7 @@ final class SpriteView: NSView {
             return greetingTicks == 0 || canTrackMouseDuringGreeting
         case .listening, .reading, .threadActive:
             return true
-        case .thinking, .working, .success, .failed:
+        case .thinking, .working, .asking, .success, .failed:
             return false
         }
     }
@@ -829,34 +845,26 @@ final class SpriteView: NSView {
 
         NSGraphicsContext.current?.shouldAntialias = false
 
-        let bobPattern: [CGFloat] = [0, 2, 4, 2]
-        let bob = bobPattern[(frameTick / 2) % bobPattern.count]
-        let stepFrame = (frameTick / 4) % 2 == 0
-        let blink = frameTick % 48 == 0 || frameTick % 48 == 1
-        let pulse = (frameTick / 3) % 2 == 0
-
-        if drawSpriteSheetFrame() {
-            return
-        }
-
-        let pixel: CGFloat = 5
-        let origin = NSPoint(x: 14, y: 10 + bob)
-
-        drawPixelShadow(pixel: pixel, origin: NSPoint(x: origin.x, y: origin.y - bob))
-        drawPixelSprite(pixel: pixel, origin: origin, stepFrame: stepFrame, blink: blink, pulse: pulse)
+        _ = drawSpriteSheetFrame()
     }
 
     private func drawSpriteSheetFrame() -> Bool {
         var frameIndex = spriteSheetFrameIndex
-        let requestedAction = frameIndex >= Self.actionFrameOffset
-        let requestedSleepWake = !requestedAction && frameIndex >= Self.sleepWakeFrameOffset
+        let requestedExpression = frameIndex >= Self.expressionFrameOffset
+        let requestedAction = !requestedExpression && frameIndex >= Self.actionFrameOffset
+        let requestedSleepWake = !requestedExpression && !requestedAction && frameIndex >= Self.sleepWakeFrameOffset
         let requestedSitting = !requestedSleepWake && frameIndex >= Self.sittingFrameOffset
         let requestedStanding = !requestedSleepWake && !requestedSitting && frameIndex >= Self.standingFrameOffset
         let requestedExtra = !requestedSleepWake && !requestedSitting && !requestedStanding && frameIndex >= Self.extraFrameOffset
         let requestedSupplemental = !requestedSleepWake && !requestedSitting && !requestedStanding && !requestedExtra && frameIndex >= Self.supplementalFrameOffset
         let selectedSheet: SpriteSheet
 
-        if requestedAction && actionSpriteSheet.image != nil {
+        if requestedExpression && expressionSpriteSheet.image != nil {
+            selectedSheet = expressionSpriteSheet
+            frameIndex -= Self.expressionFrameOffset
+        } else if requestedExpression {
+            return false
+        } else if requestedAction && actionSpriteSheet.image != nil {
             selectedSheet = actionSpriteSheet
             frameIndex -= Self.actionFrameOffset
         } else if requestedAction {
@@ -1014,16 +1022,21 @@ final class SpriteView: NSView {
         case .thinking:
             return thinkingFrameIndex
         case .threadActive:
+            if moodTicks < 600 {
+                return loopingMixed([expression(.talkPoint), expression(.talkRaise), expression(.talkGesture), expression(.talkRaise)], hold: 11)
+            }
             return loopingMixed([action(.thinking), action(.thinking), standing(.frontNeutral)], hold: 24)
         case .working:
             if moodTicks < 16 {
                 return thinkingFrameIndex
             }
             return loopingMixed([action(.thinking), attention(.workingTransition), action(.thinking), standing(.frontNeutral)], hold: 12)
+        case .asking:
+            return loopingMixed([expression(.pleading), expression(.pleading), expression(.pleading), standing(.frontNeutral)], hold: 22)
         case .success:
-            return loopingMixed([action(.happyWave), action(.happyWave), standing(.frontNeutral)], hold: 9)
+            return loopingMixed([expression(.celebrate), action(.happyWave), expression(.celebrate), standing(.frontNeutral)], hold: 10)
         case .failed:
-            return loopingFrame([.upset, .surprised, .curious, .upset], hold: 12)
+            return loopingMixed([expression(.dizzy), expression(.dizzy), primary(.upset), expression(.dizzy)], hold: 14)
         }
     }
 
@@ -1118,7 +1131,7 @@ final class SpriteView: NSView {
         if moodTicks < 24 {
             return stagedMixed([attention(.noticeTransition), attention(.listeningTransition), attention(.listeningPrompt)], elapsed: moodTicks, hold: 8)
         }
-        return loopingMixed([attention(.listeningPrompt), attention(.listeningTransition), supplemental(.awakeSmile), attention(.listeningPrompt)], hold: 18)
+        return loopingMixed([attention(.listeningPrompt), expression(.listen), expression(.listen), attention(.listeningPrompt), supplemental(.awakeSmile)], hold: 18)
     }
 
     private var readingFrameIndex: Int {
@@ -1352,6 +1365,10 @@ final class SpriteView: NSView {
 
     private func action(_ frame: ActionFrame) -> Int {
         Self.actionFrameOffset + frame.rawValue
+    }
+
+    private func expression(_ frame: ExpressionFrame) -> Int {
+        Self.expressionFrameOffset + frame.rawValue
     }
 
     private func attention(_ frame: AttentionFrame) -> Int {
@@ -1615,6 +1632,8 @@ final class SpriteView: NSView {
             return NSColor(calibratedRed: 0.36, green: 0.74, blue: 0.98, alpha: 1)
         case .working:
             return NSColor(calibratedRed: 0.96, green: 0.60, blue: 0.20, alpha: 1)
+        case .asking:
+            return NSColor(calibratedRed: 0.98, green: 0.78, blue: 0.28, alpha: 1)
         case .success:
             return NSColor(calibratedRed: 0.29, green: 0.72, blue: 0.42, alpha: 1)
         case .failed:
@@ -1622,174 +1641,4 @@ final class SpriteView: NSView {
         }
     }
 
-    private func drawPixelShadow(pixel: CGFloat, origin: NSPoint) {
-        let shadow = NSColor.black.withAlphaComponent(0.16)
-        drawBlock(x: 4, y: 0, width: 9, height: 1, pixel: pixel, origin: origin, color: shadow)
-        drawBlock(x: 5, y: -1, width: 7, height: 1, pixel: pixel, origin: origin, color: shadow.withAlphaComponent(0.10))
-    }
-
-    private func drawPixelSprite(pixel: CGFloat, origin: NSPoint, stepFrame: Bool, blink: Bool, pulse: Bool) {
-        let outline = NSColor(calibratedRed: 0.10, green: 0.13, blue: 0.16, alpha: 1)
-        let hair = NSColor(calibratedRed: 0.20, green: 0.17, blue: 0.30, alpha: 1)
-        let hairLight = NSColor(calibratedRed: 0.35, green: 0.28, blue: 0.52, alpha: 1)
-        let skin = NSColor(calibratedRed: 0.98, green: 0.77, blue: 0.57, alpha: 1)
-        let skinShadow = NSColor(calibratedRed: 0.90, green: 0.61, blue: 0.45, alpha: 1)
-        let cheek = NSColor(calibratedRed: 0.98, green: 0.42, blue: 0.49, alpha: 1)
-        let hoodie = NSColor(calibratedRed: 0.14, green: 0.64, blue: 0.72, alpha: 1)
-        let hoodieLight = NSColor(calibratedRed: 0.35, green: 0.84, blue: 0.86, alpha: 1)
-        let hoodieDark = NSColor(calibratedRed: 0.08, green: 0.42, blue: 0.51, alpha: 1)
-        let pants = NSColor(calibratedRed: 0.21, green: 0.26, blue: 0.39, alpha: 1)
-        let eye = NSColor(calibratedRed: 0.08, green: 0.10, blue: 0.12, alpha: 1)
-        let shine = NSColor.white.withAlphaComponent(0.95)
-
-        // A tiny pixel-person companion: hair, face, hoodie, arms, and feet.
-        drawSparkles(pixel: pixel, origin: origin, pulse: pulse)
-
-        // Tiny legs and shoes under an oversized chibi head.
-        drawBlock(x: 7, y: 2, width: 1, height: 2, pixel: pixel, origin: origin, color: pants)
-        drawBlock(x: 10, y: 2, width: 1, height: 2, pixel: pixel, origin: origin, color: pants)
-        drawBlock(x: stepFrame ? 5 : 6, y: 1, width: 3, height: 1, pixel: pixel, origin: origin, color: outline)
-        drawBlock(x: stepFrame ? 10 : 9, y: 1, width: 3, height: 1, pixel: pixel, origin: origin, color: outline)
-
-        // Tiny hoodie body.
-        drawBlock(x: 6, y: 4, width: 6, height: 1, pixel: pixel, origin: origin, color: outline)
-        drawBlock(x: 5, y: 5, width: 8, height: 4, pixel: pixel, origin: origin, color: outline)
-        drawBlock(x: 6, y: 5, width: 6, height: 4, pixel: pixel, origin: origin, color: hoodie)
-        drawBlock(x: 6, y: 8, width: 6, height: 1, pixel: pixel, origin: origin, color: hoodieLight)
-        drawBlock(x: 10, y: 5, width: 2, height: 3, pixel: pixel, origin: origin, color: hoodieDark)
-        drawBlock(x: 8, y: 6, width: 2, height: 1, pixel: pixel, origin: origin, color: outline.withAlphaComponent(0.55))
-        drawBlock(x: 8, y: 7, width: 1, height: 1, pixel: pixel, origin: origin, color: statusColor)
-        drawBlock(x: 9, y: 7, width: 1, height: 1, pixel: pixel, origin: origin, color: pulse ? statusColor : statusColor.withAlphaComponent(0.55))
-
-        // Arms. One side waves while idle/success.
-        drawBlock(x: 4, y: 5, width: 1, height: 3, pixel: pixel, origin: origin, color: outline)
-        drawBlock(x: 3, y: 4, width: 2, height: 1, pixel: pixel, origin: origin, color: skin)
-        let waving = mood == .idle || mood == .success
-        drawBlock(x: 13, y: waving && stepFrame ? 7 : 5, width: 1, height: 3, pixel: pixel, origin: origin, color: outline)
-        drawBlock(x: 14, y: waving && stepFrame ? 9 : 4, width: 2, height: 1, pixel: pixel, origin: origin, color: skin)
-
-        // Oversized chibi head and soft hair mass.
-        drawBlock(x: 5, y: 8, width: 8, height: 1, pixel: pixel, origin: origin, color: outline)
-        drawBlock(x: 4, y: 9, width: 10, height: 7, pixel: pixel, origin: origin, color: outline)
-        drawBlock(x: 5, y: 16, width: 8, height: 2, pixel: pixel, origin: origin, color: outline)
-        drawBlock(x: 5, y: 9, width: 8, height: 7, pixel: pixel, origin: origin, color: skin)
-        drawBlock(x: 11, y: 9, width: 2, height: 6, pixel: pixel, origin: origin, color: skinShadow.withAlphaComponent(0.38))
-
-        // Chunky hair cap, side locks, and rounded bangs.
-        drawBlock(x: 5, y: 15, width: 8, height: 3, pixel: pixel, origin: origin, color: hair)
-        drawBlock(x: 4, y: 12, width: 2, height: 4, pixel: pixel, origin: origin, color: hair)
-        drawBlock(x: 12, y: 12, width: 2, height: 4, pixel: pixel, origin: origin, color: hair)
-        drawBlock(x: 6, y: 14, width: 2, height: 3, pixel: pixel, origin: origin, color: hairLight)
-        drawBlock(x: 8, y: 13, width: 1, height: 3, pixel: pixel, origin: origin, color: hair)
-        drawBlock(x: 10, y: 14, width: 2, height: 2, pixel: pixel, origin: origin, color: hair)
-        drawBlock(x: 7, y: 12, width: 1, height: 2, pixel: pixel, origin: origin, color: hair)
-
-        drawPersonFace(pixel: pixel, origin: origin, blink: blink, eye: eye, shine: shine, cheek: cheek)
-
-        if mood == .success {
-            drawBlock(x: 1, y: 14, width: 1, height: 1, pixel: pixel, origin: origin, color: statusColor)
-            drawBlock(x: 3, y: 16, width: 1, height: 1, pixel: pixel, origin: origin, color: statusColor.withAlphaComponent(0.75))
-        }
-    }
-
-    private func drawPersonFace(
-        pixel: CGFloat,
-        origin: NSPoint,
-        blink: Bool,
-        eye: NSColor,
-        shine: NSColor,
-        cheek: NSColor
-    ) {
-        drawBlock(x: 5, y: 12, width: 1, height: 1, pixel: pixel, origin: origin, color: cheek.withAlphaComponent(0.72))
-        drawBlock(x: 12, y: 12, width: 1, height: 1, pixel: pixel, origin: origin, color: cheek.withAlphaComponent(0.58))
-
-        switch mood {
-        case .idle, .listening, .reading, .thinking, .threadActive:
-            drawOpenPersonEyes(pixel: pixel, origin: origin, blink: blink, eye: eye, shine: shine)
-            drawTinySmile(pixel: pixel, origin: origin, eye: eye)
-
-        case .working:
-            drawBlock(x: 6, y: 14, width: 2, height: 1, pixel: pixel, origin: origin, color: eye.withAlphaComponent(0.75))
-            drawBlock(x: 10, y: 14, width: 2, height: 1, pixel: pixel, origin: origin, color: eye.withAlphaComponent(0.75))
-            drawOpenPersonEyes(pixel: pixel, origin: origin, blink: blink, eye: eye, shine: shine)
-            drawBlock(x: 7, y: 12, width: 4, height: 1, pixel: pixel, origin: origin, color: eye)
-            drawBlock(x: 13, y: 15, width: 1, height: 1, pixel: pixel, origin: origin, color: statusColor)
-
-        case .success:
-            drawHappyPersonEyes(pixel: pixel, origin: origin, blink: blink, eye: eye)
-            drawBlock(x: 7, y: 12, width: 1, height: 1, pixel: pixel, origin: origin, color: eye)
-            drawBlock(x: 10, y: 12, width: 1, height: 1, pixel: pixel, origin: origin, color: eye)
-            drawBlock(x: 8, y: 11, width: 2, height: 1, pixel: pixel, origin: origin, color: eye)
-            drawBlock(x: 8, y: 10, width: 2, height: 1, pixel: pixel, origin: origin, color: NSColor.white.withAlphaComponent(0.70))
-
-        case .failed:
-            drawWorriedPersonEyes(pixel: pixel, origin: origin, eye: eye)
-            drawBlock(x: 7, y: 12, width: 4, height: 1, pixel: pixel, origin: origin, color: eye)
-            drawBlock(x: 7, y: 11, width: 1, height: 1, pixel: pixel, origin: origin, color: eye)
-            drawBlock(x: 10, y: 11, width: 1, height: 1, pixel: pixel, origin: origin, color: eye)
-        }
-    }
-
-    private func drawOpenPersonEyes(pixel: CGFloat, origin: NSPoint, blink: Bool, eye: NSColor, shine: NSColor) {
-        if blink {
-            drawBlock(x: 6, y: 13, width: 2, height: 1, pixel: pixel, origin: origin, color: eye)
-            drawBlock(x: 10, y: 13, width: 2, height: 1, pixel: pixel, origin: origin, color: eye)
-            return
-        }
-
-        drawBlock(x: 6, y: 13, width: 2, height: 2, pixel: pixel, origin: origin, color: eye)
-        drawBlock(x: 10, y: 13, width: 2, height: 2, pixel: pixel, origin: origin, color: eye)
-        drawBlock(x: 7, y: 14, width: 1, height: 1, pixel: pixel, origin: origin, color: shine)
-        drawBlock(x: 11, y: 14, width: 1, height: 1, pixel: pixel, origin: origin, color: shine.withAlphaComponent(0.85))
-    }
-
-    private func drawHappyPersonEyes(pixel: CGFloat, origin: NSPoint, blink: Bool, eye: NSColor) {
-        if blink {
-            drawBlock(x: 6, y: 13, width: 2, height: 1, pixel: pixel, origin: origin, color: eye)
-            drawBlock(x: 10, y: 13, width: 2, height: 1, pixel: pixel, origin: origin, color: eye)
-            return
-        }
-
-        drawBlock(x: 6, y: 14, width: 1, height: 1, pixel: pixel, origin: origin, color: eye)
-        drawBlock(x: 7, y: 13, width: 1, height: 1, pixel: pixel, origin: origin, color: eye)
-        drawBlock(x: 10, y: 13, width: 1, height: 1, pixel: pixel, origin: origin, color: eye)
-        drawBlock(x: 11, y: 14, width: 1, height: 1, pixel: pixel, origin: origin, color: eye)
-    }
-
-    private func drawWorriedPersonEyes(pixel: CGFloat, origin: NSPoint, eye: NSColor) {
-        drawBlock(x: 6, y: 14, width: 2, height: 1, pixel: pixel, origin: origin, color: eye)
-        drawBlock(x: 10, y: 14, width: 2, height: 1, pixel: pixel, origin: origin, color: eye)
-        drawBlock(x: 7, y: 13, width: 1, height: 1, pixel: pixel, origin: origin, color: eye)
-        drawBlock(x: 10, y: 13, width: 1, height: 1, pixel: pixel, origin: origin, color: eye)
-    }
-
-    private func drawTinySmile(pixel: CGFloat, origin: NSPoint, eye: NSColor) {
-        drawBlock(x: 7, y: 12, width: 1, height: 1, pixel: pixel, origin: origin, color: eye)
-        drawBlock(x: 8, y: 11, width: 2, height: 1, pixel: pixel, origin: origin, color: eye)
-        drawBlock(x: 10, y: 12, width: 1, height: 1, pixel: pixel, origin: origin, color: eye)
-    }
-
-    private func drawSparkles(pixel: CGFloat, origin: NSPoint, pulse: Bool) {
-        let sparkle = pulse ? statusColor : statusColor.withAlphaComponent(0.45)
-        drawBlock(x: 3, y: 16, width: 1, height: 1, pixel: pixel, origin: origin, color: sparkle)
-        drawBlock(x: 15, y: 14, width: 1, height: 1, pixel: pixel, origin: origin, color: sparkle.withAlphaComponent(0.65))
-    }
-
-    private func drawBlock(
-        x: Int,
-        y: Int,
-        width: Int,
-        height: Int,
-        pixel: CGFloat,
-        origin: NSPoint,
-        color: NSColor
-    ) {
-        color.setFill()
-        NSRect(
-            x: origin.x + CGFloat(x) * pixel,
-            y: origin.y + CGFloat(y) * pixel,
-            width: CGFloat(width) * pixel,
-            height: CGFloat(height) * pixel
-        ).fill()
-    }
 }

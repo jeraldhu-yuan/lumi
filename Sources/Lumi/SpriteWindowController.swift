@@ -371,6 +371,7 @@ final class SpriteView: NSView {
     private static let sleepAfterTicks = 4_500
     private static let sleepTransitionTicks = 84
     private static let userAttentionAfterClickTicks = 900
+    private static let affectionTotalTicks = 40
     private static let supplementalFrameOffset = 1_000
     private static let extraFrameOffset = 2_000
     private static let standingFrameOffset = 3_000
@@ -431,6 +432,7 @@ final class SpriteView: NSView {
     private var mouseHoldTicks = 0
     private var dragReleaseTicks = 0
     private var dragReleaseTotalTicks = 0
+    private var affectionTicks = 0
     private var dragVelocity = CGVector(dx: 0, dy: 0)
     private var mouseDownLocation: NSPoint = .zero
     private var dragged = false
@@ -480,6 +482,10 @@ final class SpriteView: NSView {
                 if self.dragReleaseTicks == 0 {
                     self.dragReleaseTotalTicks = 0
                 }
+            }
+
+            if self.affectionTicks > 0 && !self.dragInProgress {
+                self.affectionTicks -= 1
             }
 
             if self.mood == .idle && !self.dragInProgress {
@@ -566,6 +572,7 @@ final class SpriteView: NSView {
         if !dragged {
             dragReleaseTicks = 0
             dragReleaseTotalTicks = 0
+            affectionTicks = Self.affectionTotalTicks
             startGreeting(fromRest: wasRestingOnMouseDown, fromSleep: wasSleepingOnMouseDown)
             onClick()
         } else {
@@ -585,7 +592,7 @@ final class SpriteView: NSView {
     private func startGreeting(fromRest: Bool, fromSleep: Bool) {
         greetingWasFromRest = fromRest
         greetingWasFromSleep = fromSleep
-        greetingTotalTicks = fromSleep ? 126 : (fromRest ? 84 : 66)
+        greetingTotalTicks = fromSleep ? 132 : (fromRest ? 102 : 96)
         greetingTicks = greetingTotalTicks
         userInactivityTicks = 0
         interactionPauseTicks = max(interactionPauseTicks, greetingTotalTicks + 24)
@@ -933,6 +940,9 @@ final class SpriteView: NSView {
         } else if dragReleaseTicks > 0 {
             drawDropSparkles(around: drawRect)
         }
+        if affectionTicks > 0 && !dragInProgress {
+            drawAffectionHearts(around: drawRect)
+        }
         drawAmbientSparkles(around: drawRect)
         if shouldShowGreetingBubble {
             drawGreetingBubble(around: drawRect)
@@ -1167,7 +1177,7 @@ final class SpriteView: NSView {
             return restWakeFrameIndex(elapsed: elapsed)
         }
 
-        return stagedMixed([primary(.surprised), supplemental(.awakeSmile), action(.happyWave), action(.happyWave), standing(.frontNeutral)], elapsed: elapsed, hold: 10)
+        return stagedMixed([primary(.surprised), supplemental(.awakeSmile), action(.happyWave), action(.happyWave), expression(.celebrate), standing(.frontNeutral)], elapsed: elapsed, hold: 13)
     }
 
     private func greetingGazeFrameIndex(elapsed: Int) -> Int? {
@@ -1193,7 +1203,7 @@ final class SpriteView: NSView {
             return nil
         }
 
-        if elapsed >= 30 {
+        if elapsed >= 70 {
             return standing(direction.standingFrame)
         }
         return nil
@@ -1508,6 +1518,27 @@ final class SpriteView: NSView {
                 y: rect.minY + 15 + rise + CGFloat((index * 3) % 7),
                 size: size,
                 color: index % 2 == 0 ? blue : white
+            )
+        }
+    }
+
+    private func drawAffectionHearts(around rect: NSRect) {
+        let elapsed = CGFloat(Self.affectionTotalTicks - affectionTicks)
+        let fade = CGFloat(affectionTicks) / CGFloat(Self.affectionTotalTicks)
+        let pink = NSColor(calibratedRed: 1.0, green: 0.48, blue: 0.70, alpha: 0.92 * fade)
+
+        drawPixelHeart(
+            x: rect.maxX - 26,
+            y: min(bounds.maxY - 12, rect.maxY - 22 + elapsed * 0.9),
+            scale: 2,
+            color: pink
+        )
+        if elapsed > 8 {
+            drawPixelHeart(
+                x: rect.minX + 12,
+                y: min(bounds.maxY - 10, rect.maxY - 30 + elapsed * 0.6),
+                scale: 1.5,
+                color: pink.withAlphaComponent(0.65 * fade)
             )
         }
     }

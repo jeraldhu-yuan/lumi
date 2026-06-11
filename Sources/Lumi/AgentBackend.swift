@@ -4,6 +4,9 @@ enum AgentEvent {
     case status(String)
     case sessionStarted(id: String)
     case delta(String)
+    /// What the agent is doing right now — a tool call, a subagent, a search.
+    /// Surfaced as a transient activity line so the user sees progress.
+    case activity(String)
     case approvalRequest(description: String, respond: (Bool) -> Void)
     case completed(sessionId: String?, finalMessage: String)
     case failed(String)

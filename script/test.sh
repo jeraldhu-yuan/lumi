@@ -16,6 +16,8 @@ xcrun swiftc -swift-version 5 \
   Sources/Lumi/MasterSessionStore.swift \
   Sources/Lumi/LumiContextStore.swift \
   Sources/Lumi/CodexSessionRecovery.swift \
+  Sources/Lumi/AppConfig.swift \
+  Sources/Lumi/CodexBackend.swift \
   Tests/TestRunner/main.swift \
   -o .build/lumi-tests
 

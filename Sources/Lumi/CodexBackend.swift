@@ -40,6 +40,29 @@ final class CodexBackend: AgentBackend {
 
     func reset() {}
 
+    /// A short progress line for a Codex work item (command, file change,
+    /// subagent), or nil for items that aren't worth surfacing.
+    static func activitySummary(for item: [String: Any]) -> String? {
+        switch item["type"] as? String {
+        case "commandExecution":
+            if let command = item["command"] as? String {
+                return "Run: \(command.prefix(80))"
+            }
+            return "Running a command"
+        case "fileChange":
+            return "Editing files in the workspace"
+        case "subagent", "agent":
+            return "Delegating to a subagent"
+        case "mcpToolCall", "toolCall":
+            if let tool = item["tool"] as? String ?? item["name"] as? String {
+                return "Using \(tool)"
+            }
+            return nil
+        default:
+            return nil
+        }
+    }
+
     private func run(
         request: AgentRequest,
         workspacePath: String,
@@ -415,6 +438,13 @@ final class CodexBackend: AgentBackend {
 
                         case "turn/started":
                             sawTurnStarted = true
+
+                        case "item/started", "item/updated":
+                            if let params = message["params"] as? [String: Any],
+                               let item = params["item"] as? [String: Any],
+                               let summary = Self.activitySummary(for: item) {
+                                onEvent(.activity(summary))
+                            }
 
                         case "error":
                             if let params = message["params"] as? [String: Any],

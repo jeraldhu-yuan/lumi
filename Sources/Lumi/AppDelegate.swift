@@ -138,6 +138,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.appendResponseDelta(delta)
                     self.spriteController?.setMood(.threadActive)
 
+                case .activity(let summary):
+                    self.spriteController?.setMood(.working)
+                    self.promptController?.update(
+                        status: summary,
+                        isSending: true,
+                        threadId: self.activeSessionId ?? continuingSessionId
+                    )
+
                 case .approvalRequest(let description, let respond):
                     self.spriteController?.setMood(.asking)
                     self.promptController?.update(

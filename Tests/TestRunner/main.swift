@@ -118,7 +118,43 @@ do {
     expect(ClaudeCodeStreamParser.parse(line: data(emptyError)) == .failure("Claude Code turn failed."), "claude-code: empty error gets a default message")
 
     expect(ClaudeCodeStreamParser.parse(line: data("not json")) == nil, "claude-code: garbage lines are ignored")
-    expect(ClaudeCodeStreamParser.parse(line: data(#"{"type":"assistant"}"#)) == nil, "claude-code: unrelated message types are ignored")
+    expect(ClaudeCodeStreamParser.parse(line: data(#"{"type":"assistant","message":{"content":[{"type":"text","text":"hi"}]}}"#)) == nil, "claude-code: text-only assistant messages yield no activity")
+
+    let toolUse = #"{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"npm test"}}]}}"#
+    expect(ClaudeCodeStreamParser.parse(line: data(toolUse)) == .toolActivity("Run: npm test"), "claude-code: tool_use surfaces a Bash activity summary")
+
+    let editUse = #"{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"/x/main.swift"}}]}}"#
+    expect(ClaudeCodeStreamParser.parse(line: data(editUse)) == .toolActivity("Edit main.swift"), "claude-code: Edit tool_use names the file")
+}
+
+// MARK: - Claude permission control requests
+
+do {
+    let canUse = #"{"type":"control_request","request_id":"req-7","request":{"subtype":"can_use_tool","tool_name":"Write","input":{"file_path":"/x/notes.txt"}}}"#
+    guard let dict = try? JSONSerialization.jsonObject(with: data(canUse)) as? [String: Any] else {
+        expect(false, "claude permissions: control request parses as JSON")
+        fatalError()
+    }
+    let parsed = ClaudeCodeStreamParser.permissionRequest(message: dict)
+    expect(parsed?.requestId == "req-7", "claude permissions: request id extracted")
+    expect(parsed?.toolName == "Write", "claude permissions: tool name extracted")
+    expect(parsed?.summary == "Write notes.txt", "claude permissions: summary falls back to tool+path")
+
+    let described = #"{"type":"control_request","request_id":"r2","request":{"subtype":"can_use_tool","tool_name":"Bash","description":"Allow network access?","input":{}}}"#
+    let dict2 = try! JSONSerialization.jsonObject(with: data(described)) as! [String: Any]
+    expect(ClaudeCodeStreamParser.permissionRequest(message: dict2)?.summary == "Allow network access?", "claude permissions: explicit description wins")
+
+    let other = #"{"type":"control_request","request_id":"r3","request":{"subtype":"initialize"}}"#
+    let dict3 = try! JSONSerialization.jsonObject(with: data(other)) as! [String: Any]
+    expect(ClaudeCodeStreamParser.permissionRequest(message: dict3) == nil, "claude permissions: non-can_use_tool control requests are ignored")
+}
+
+// MARK: - Codex activity summaries
+
+do {
+    expect(CodexBackend.activitySummary(for: ["type": "commandExecution", "command": "ls -la"]) == "Run: ls -la", "codex activity: command execution")
+    expect(CodexBackend.activitySummary(for: ["type": "fileChange"]) == "Editing files in the workspace", "codex activity: file change")
+    expect(CodexBackend.activitySummary(for: ["type": "agentMessage"]) == nil, "codex activity: message items are not activity")
 }
 
 // MARK: - BackendKind
